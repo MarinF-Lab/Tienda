@@ -1,34 +1,47 @@
 'use strict';
 
-/* ===== PRODUCTS DATA ===== */
-const PRODUCTS = {
-  shoes: [
-    { id: 's1', name: 'STRIDE Runner Pro', category: 'running', tag: '-30%', emoji: '👟', bg: 'linear-gradient(135deg,#e8f4ff,#c7e0ff)', price: 89990, originalPrice: 129990, colors: ['#222','#ef4444','#3b82f6'], sizes: ['38','39','40','41','42','43','44'] },
-    { id: 's2', name: 'Urban Classic Low', category: 'casual', tag: 'Nuevo', emoji: '👟', bg: 'linear-gradient(135deg,#fff7e6,#ffe4a0)', price: 59990, originalPrice: null, colors: ['#f5e4c3','#222','#6b7280'], sizes: ['38','39','40','41','42','43'] },
-    { id: 's3', name: 'Elite Training XT', category: 'running', tag: null, emoji: '🥿', bg: 'linear-gradient(135deg,#f0fff4,#bbf7d0)', price: 74990, originalPrice: null, colors: ['#222','#16a34a','#fff'], sizes: ['39','40','41','42','43','44','45'] },
-    { id: 's4', name: 'Oxford Premium', category: 'formal', tag: null, emoji: '👞', bg: 'linear-gradient(135deg,#1a0a00,#3d1f00)', price: 99990, originalPrice: null, colors: ['#3d1f00','#1a0a00','#555'], sizes: ['39','40','41','42','43','44'] },
-    { id: 's5', name: 'Street Boost 2.0', category: 'casual', tag: '-20%', emoji: '👟', bg: 'linear-gradient(135deg,#fdf2f8,#fce7f3)', price: 69990, originalPrice: 87990, colors: ['#ec4899','#222','#7c3aed'], sizes: ['37','38','39','40','41','42'] },
-    { id: 's6', name: 'Veloce Sprint', category: 'running', tag: 'Top Venta', emoji: '🏃', bg: 'linear-gradient(135deg,#fefce8,#fef08a)', price: 109990, originalPrice: null, colors: ['#eab308','#222','#fff'], sizes: ['39','40','41','42','43','44'] },
-    { id: 's7', name: 'Derby Elegance', category: 'formal', tag: null, emoji: '👞', bg: 'linear-gradient(135deg,#1e1e2e,#2d2d44)', price: 119990, originalPrice: null, colors: ['#1e1e2e','#7c3aed','#fff'], sizes: ['40','41','42','43','44'] },
-    { id: 's8', name: 'Canvas Daily', category: 'casual', tag: '-15%', emoji: '👟', bg: 'linear-gradient(135deg,#f0f9ff,#bae6fd)', price: 42990, originalPrice: 50990, colors: ['#0ea5e9','#fff','#222'], sizes: ['37','38','39','40','41','42','43'] },
-  ],
-  bags: [
-    { id: 'b1', name: 'Tote Minimalista', tag: 'Nuevo', emoji: '👜', bg: 'linear-gradient(135deg,#fdf4ff,#e9d5ff)', price: 49990, originalPrice: null, colors: ['#a855f7','#222','#fff'], sizes: ['Único'] },
-    { id: 'b2', name: 'Crossbody Urban', tag: '-25%', emoji: '👝', bg: 'linear-gradient(135deg,#fff7ed,#fed7aa)', price: 39990, originalPrice: 53990, colors: ['#f97316','#222','#92400e'], sizes: ['S','M'] },
-    { id: 'b3', name: 'Backpack Pro 30L', tag: null, emoji: '🎒', bg: 'linear-gradient(135deg,#f0fdf4,#bbf7d0)', price: 69990, originalPrice: null, colors: ['#16a34a','#222','#854d0e'], sizes: ['Único'] },
-    { id: 'b4', name: 'Clutch Evening', tag: 'Exclusivo', emoji: '👛', bg: 'linear-gradient(135deg,#1a1a2e,#16213e)', price: 29990, originalPrice: null, colors: ['#c0c0c0','#d4af37','#222'], sizes: ['Único'] },
-    { id: 'b5', name: 'Laptop Messenger', tag: null, emoji: '💼', bg: 'linear-gradient(135deg,#1e1e1e,#3d3d3d)', price: 84990, originalPrice: null, colors: ['#222','#6b7280','#92400e'], sizes: ['13"','15"','17"'] },
-    { id: 'b6', name: 'Shopper Weekend', tag: '-10%', emoji: '🛍️', bg: 'linear-gradient(135deg,#fef2f2,#fecaca)', price: 44990, originalPrice: 49990, colors: ['#ef4444','#fff','#222'], sizes: ['M','L'] },
-  ],
-  accessories: [
-    { id: 'a1', name: 'Cinturón Cuero', tag: 'Nuevo', emoji: '🧶', bg: 'linear-gradient(135deg,#451a03,#78350f)', price: 24990, originalPrice: null, colors: ['#78350f','#222','#d4af37'], sizes: ['S','M','L','XL'] },
-    { id: 'a2', name: 'Reloj Sport Edge', tag: '-35%', emoji: '⌚', bg: 'linear-gradient(135deg,#0f172a,#1e293b)', price: 89990, originalPrice: 139990, colors: ['#222','#ef4444','#d4af37'], sizes: ['38mm','42mm'] },
-    { id: 'a3', name: 'Bufanda Premium', tag: null, emoji: '🧣', bg: 'linear-gradient(135deg,#fdf2f8,#fce7f3)', price: 18990, originalPrice: null, colors: ['#ec4899','#7c3aed','#f97316','#222'], sizes: ['Único'] },
-    { id: 'a4', name: 'Gorra Signature', tag: 'Top Venta', emoji: '🧢', bg: 'linear-gradient(135deg,#eff6ff,#bfdbfe)', price: 14990, originalPrice: null, colors: ['#3b82f6','#222','#fff'], sizes: ['S/M','L/XL'] },
-    { id: 'a5', name: 'Lentes Retro', tag: null, emoji: '🕶️', bg: 'linear-gradient(135deg,#fef9c3,#fef08a)', price: 32990, originalPrice: null, colors: ['#222','#d4af37','#ef4444'], sizes: ['Único'] },
-    { id: 'a6', name: 'Pulsera Milano', tag: '-20%', emoji: '📿', bg: 'linear-gradient(135deg,#f0fdf4,#d1fae5)', price: 19990, originalPrice: 24990, colors: ['#d4af37','#c0c0c0','#222'], sizes: ['S','M','L'] },
-  ]
-};
+/* ===== PRODUCTS DATA — se lee del localStorage si el admin guardó cambios ===== */
+const ADMIN_PRODUCTS_KEY = 'stride_products';
+
+const DEFAULT_FLAT_PRODUCTS = [
+  { id:'s1', name:'STRIDE Runner Pro', category:'zapatos', subcategory:'running', tag:'-30%', emoji:'👟', imageUrl:'', bg:'linear-gradient(135deg,#e8f4ff,#c7e0ff)', price:89990, originalPrice:129990, colors:['#222','#ef4444','#3b82f6'], sizes:['38','39','40','41','42','43','44'], stock:24, active:true },
+  { id:'s2', name:'Urban Classic Low', category:'zapatos', subcategory:'casual', tag:'Nuevo', emoji:'👟', imageUrl:'', bg:'linear-gradient(135deg,#fff7e6,#ffe4a0)', price:59990, originalPrice:null, colors:['#f5e4c3','#222','#6b7280'], sizes:['38','39','40','41','42','43'], stock:18, active:true },
+  { id:'s3', name:'Elite Training XT', category:'zapatos', subcategory:'running', tag:null, emoji:'🥿', imageUrl:'', bg:'linear-gradient(135deg,#f0fff4,#bbf7d0)', price:74990, originalPrice:null, colors:['#222','#16a34a','#fff'], sizes:['39','40','41','42','43','44','45'], stock:5, active:true },
+  { id:'s4', name:'Oxford Premium', category:'zapatos', subcategory:'formal', tag:null, emoji:'👞', imageUrl:'', bg:'linear-gradient(135deg,#1a0a00,#3d1f00)', price:99990, originalPrice:null, colors:['#3d1f00','#1a0a00','#555'], sizes:['39','40','41','42','43','44'], stock:8, active:true },
+  { id:'s5', name:'Street Boost 2.0', category:'zapatos', subcategory:'casual', tag:'-20%', emoji:'👟', imageUrl:'', bg:'linear-gradient(135deg,#fdf2f8,#fce7f3)', price:69990, originalPrice:87990, colors:['#ec4899','#222','#7c3aed'], sizes:['37','38','39','40','41','42'], stock:3, active:true },
+  { id:'s6', name:'Veloce Sprint', category:'zapatos', subcategory:'running', tag:'Top Venta', emoji:'🏃', imageUrl:'', bg:'linear-gradient(135deg,#fefce8,#fef08a)', price:109990, originalPrice:null, colors:['#eab308','#222','#fff'], sizes:['39','40','41','42','43','44'], stock:30, active:true },
+  { id:'s7', name:'Derby Elegance', category:'zapatos', subcategory:'formal', tag:null, emoji:'👞', imageUrl:'', bg:'linear-gradient(135deg,#1e1e2e,#2d2d44)', price:119990, originalPrice:null, colors:['#1e1e2e','#7c3aed','#fff'], sizes:['40','41','42','43','44'], stock:0, active:true },
+  { id:'s8', name:'Canvas Daily', category:'zapatos', subcategory:'casual', tag:'-15%', emoji:'👟', imageUrl:'', bg:'linear-gradient(135deg,#f0f9ff,#bae6fd)', price:42990, originalPrice:50990, colors:['#0ea5e9','#fff','#222'], sizes:['37','38','39','40','41','42','43'], stock:45, active:true },
+  { id:'b1', name:'Tote Minimalista', category:'bolsos', subcategory:'', tag:'Nuevo', emoji:'👜', imageUrl:'', bg:'linear-gradient(135deg,#fdf4ff,#e9d5ff)', price:49990, originalPrice:null, colors:['#a855f7','#222','#fff'], sizes:['Único'], stock:20, active:true },
+  { id:'b2', name:'Crossbody Urban', category:'bolsos', subcategory:'', tag:'-25%', emoji:'👝', imageUrl:'', bg:'linear-gradient(135deg,#fff7ed,#fed7aa)', price:39990, originalPrice:53990, colors:['#f97316','#222','#92400e'], sizes:['S','M'], stock:12, active:true },
+  { id:'b3', name:'Backpack Pro 30L', category:'bolsos', subcategory:'', tag:null, emoji:'🎒', imageUrl:'', bg:'linear-gradient(135deg,#f0fdf4,#bbf7d0)', price:69990, originalPrice:null, colors:['#16a34a','#222','#854d0e'], sizes:['Único'], stock:9, active:true },
+  { id:'b4', name:'Clutch Evening', category:'bolsos', subcategory:'', tag:'Exclusivo', emoji:'👛', imageUrl:'', bg:'linear-gradient(135deg,#1a1a2e,#16213e)', price:29990, originalPrice:null, colors:['#c0c0c0','#d4af37','#222'], sizes:['Único'], stock:7, active:true },
+  { id:'b5', name:'Laptop Messenger', category:'bolsos', subcategory:'', tag:null, emoji:'💼', imageUrl:'', bg:'linear-gradient(135deg,#1e1e1e,#3d3d3d)', price:84990, originalPrice:null, colors:['#222','#6b7280','#92400e'], sizes:['13"','15"','17"'], stock:4, active:true },
+    { id:'b6', name:'Shopper Weekend', category:'bolsos', subcategory:'', tag:'-10%', emoji:'🛍️', imageUrl:'', bg:'linear-gradient(135deg,#fef2f2,#fecaca)', price:44990, originalPrice:49990, colors:['#ef4444','#fff','#222'], sizes:['M','L'], stock:15, active:true },
+  { id:'a1', name:'Cinturón Cuero', category:'accesorios', subcategory:'', tag:'Nuevo', emoji:'🧶', imageUrl:'', bg:'linear-gradient(135deg,#451a03,#78350f)', price:24990, originalPrice:null, colors:['#78350f','#222','#d4af37'], sizes:['S','M','L','XL'], stock:25, active:true },
+  { id:'a2', name:'Reloj Sport Edge', category:'accesorios', subcategory:'', tag:'-35%', emoji:'⌚', imageUrl:'', bg:'linear-gradient(135deg,#0f172a,#1e293b)', price:89990, originalPrice:139990, colors:['#222','#ef4444','#d4af37'], sizes:['38mm','42mm'], stock:6, active:true },
+  { id:'a3', name:'Bufanda Premium', category:'accesorios', subcategory:'', tag:null, emoji:'🧣', imageUrl:'', bg:'linear-gradient(135deg,#fdf2f8,#fce7f3)', price:18990, originalPrice:null, colors:['#ec4899','#7c3aed','#f97316','#222'], sizes:['Único'], stock:40, active:true },
+  { id:'a4', name:'Gorra Signature', category:'accesorios', subcategory:'', tag:'Top Venta', emoji:'🧢', imageUrl:'', bg:'linear-gradient(135deg,#eff6ff,#bfdbfe)', price:14990, originalPrice:null, colors:['#3b82f6','#222','#fff'], sizes:['S/M','L/XL'], stock:2, active:true },
+  { id:'a5', name:'Lentes Retro', category:'accesorios', subcategory:'', tag:null, emoji:'🕶️', imageUrl:'', bg:'linear-gradient(135deg,#fef9c3,#fef08a)', price:32990, originalPrice:null, colors:['#222','#d4af37','#ef4444'], sizes:['Único'], stock:11, active:true },
+  { id:'a6', name:'Pulsera Milano', category:'accesorios', subcategory:'', tag:'-20%', emoji:'📿', imageUrl:'', bg:'linear-gradient(135deg,#f0fdf4,#d1fae5)', price:19990, originalPrice:24990, colors:['#d4af37','#c0c0c0','#222'], sizes:['S','M','L'], stock:0, active:true },
+];
+
+/* Lee los productos del admin (localStorage) o usa los defaults */
+function loadStoreProducts() {
+  try {
+    const raw = localStorage.getItem(ADMIN_PRODUCTS_KEY);
+    return raw ? JSON.parse(raw) : DEFAULT_FLAT_PRODUCTS;
+  } catch { return DEFAULT_FLAT_PRODUCTS; }
+}
+
+function buildProductSections(allProducts) {
+  const active = allProducts.filter(p => p.active !== false);
+  return {
+    shoes:       active.filter(p => p.category === 'zapatos').map(p => ({ ...p, category: p.subcategory || 'casual' })),
+    bags:        active.filter(p => p.category === 'bolsos'),
+    accessories: active.filter(p => p.category === 'accesorios'),
+  };
+}
 
 /* ===== CART STATE ===== */
 let cart = JSON.parse(localStorage.getItem('stride_cart') || '[]');
@@ -58,11 +71,14 @@ function renderCard(p) {
     `<button class="size-btn ${i === 0 ? 'selected' : ''}" data-size="${s}">${s}</button>`
   ).join('');
 
+  const imgInner = p.imageUrl
+    ? `<img src="${p.imageUrl}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover" onerror="this.parentElement.innerHTML='<span style=\\'font-size:80px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.2))\\'>${p.emoji}</span>'" />`
+    : `<span style="font-size:80px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.2))">${p.emoji}</span>`;
+
   card.innerHTML = `
     ${p.tag ? `<div class="product-card__badge">${p.tag}</div>` : ''}
-    <div class="product-card__img" style="background:${p.bg}">
-      <span style="filter:drop-shadow(0 8px 16px rgba(0,0,0,.2))">${p.emoji}</span>
-    </div>
+    ${p.stock === 0 ? '<div class="product-card__badge" style="background:#6b7280">Sin Stock</div>' : ''}
+    <div class="product-card__img" style="background:${p.bg}">${imgInner}</div>
     <div class="product-card__info">
       <div class="product-card__name">${p.name}</div>
       <div class="product-card__category">${p.category || 'Accesorio'}</div>
@@ -73,7 +89,7 @@ function renderCard(p) {
           ${isSale ? `<span class="price-original">${fmt(p.originalPrice)}</span>` : ''}
           <span class="price-current${isSale ? ' sale' : ''}">${fmt(p.price)}</span>
         </div>
-        <button class="product-card__add" aria-label="Agregar al carrito" data-id="${p.id}">+</button>
+        <button class="product-card__add" aria-label="Agregar al carrito" data-id="${p.id}" ${p.stock === 0 ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>+</button>
       </div>
     </div>
   `;
@@ -316,6 +332,7 @@ window.scrollTo = function(target) {
 };
 
 /* ===== INIT ===== */
+const PRODUCTS = buildProductSections(loadStoreProducts());
 populateGrid('shoesGrid', PRODUCTS.shoes);
 populateGrid('bagsGrid', PRODUCTS.bags);
 populateGrid('accGrid', PRODUCTS.accessories);
