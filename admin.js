@@ -529,7 +529,5 @@ function showAdmin() {
   showView('dashboard');
 }
 
-/* Si ya hay sesión válida, entrar directo */
-if (isLoggedIn()) {
-  showAdmin();
-}
+/* Acceso directo sin contraseña */
+showAdmin();
