@@ -13,7 +13,7 @@ const STORAGE_KEYS = {
 };
 
 /* Hash SHA-256 de "stride2026" (contraseña por defecto) */
-const DEFAULT_PWD_HASH = 'a7b3c9e1f2d4e8c6a0b5d3f7e9c1a2b4d6e8f0a1c3b5d7e9f1a3c5b7d9e1f3a5';
+const DEFAULT_PWD_HASH = '4b1d979b05a909da790c0e068209131eda76030fe2bc84085c0076592b1f57be';
 
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
