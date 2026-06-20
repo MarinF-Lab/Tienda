@@ -1,51 +1,40 @@
-'use strict';
+import { db } from './firebase-config.js';
+import {
+  collection, getDocs, setDoc, deleteDoc, doc, writeBatch
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 /* ===================================================================
-   CONFIGURACIÓN DE SEGURIDAD
-   La contraseña se guarda como hash SHA-256 en localStorage.
+   SEGURIDAD — contraseña como hash SHA-256 en localStorage
    Contraseña por defecto: stride2026
    =================================================================== */
-
-const STORAGE_KEYS = {
-  PWD_HASH: 'stride_admin_pwd',
-  SESSION: 'stride_admin_session',
-  PRODUCTS: 'stride_products',
-};
-
-/* Hash SHA-256 de "stride2026" (contraseña por defecto) */
+const STORAGE_KEYS = { PWD_HASH: 'stride_admin_pwd', SESSION: 'stride_admin_session' };
 const DEFAULT_PWD_HASH = '4b1d979b05a909da790c0e068209131eda76030fe2bc84085c0076592b1f57be';
 
 async function sha256(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 }
-
 function getStoredHash() {
   return localStorage.getItem(STORAGE_KEYS.PWD_HASH) || DEFAULT_PWD_HASH;
 }
 
-/* ===================================================================
-   SESIÓN — expira en 8 horas
-   =================================================================== */
+/* ===== SESIÓN (8 horas) ===== */
 const SESSION_TTL = 8 * 60 * 60 * 1000;
-
 function isLoggedIn() {
   try {
     const s = JSON.parse(localStorage.getItem(STORAGE_KEYS.SESSION) || 'null');
     return s && (Date.now() - s.ts) < SESSION_TTL;
   } catch { return false; }
 }
-
 function createSession() {
   localStorage.setItem(STORAGE_KEYS.SESSION, JSON.stringify({ ts: Date.now() }));
 }
-
 function destroySession() {
   localStorage.removeItem(STORAGE_KEYS.SESSION);
 }
 
 /* ===================================================================
-   PRODUCTOS — defaults e i/o localStorage
+   PRODUCTOS POR DEFECTO
    =================================================================== */
 const DEFAULT_PRODUCTS = [
   { id:'s1', name:'STRIDE Runner Pro', category:'zapatos', subcategory:'running', tag:'-30%', emoji:'👟', imageUrl:'', bg:'linear-gradient(135deg,#e8f4ff,#c7e0ff)', price:89990, originalPrice:129990, colors:['#222','#ef4444','#3b82f6'], sizes:['38','39','40','41','42','43','44'], stock:24, active:true },
@@ -70,27 +59,44 @@ const DEFAULT_PRODUCTS = [
   { id:'a6', name:'Pulsera Milano', category:'accesorios', subcategory:'', tag:'-20%', emoji:'📿', imageUrl:'', bg:'linear-gradient(135deg,#f0fdf4,#d1fae5)', price:19990, originalPrice:24990, colors:['#d4af37','#c0c0c0','#222'], sizes:['S','M','L'], stock:0, active:true },
 ];
 
-function loadProducts() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEYS.PRODUCTS);
-    return raw ? JSON.parse(raw) : [...DEFAULT_PRODUCTS];
-  } catch { return [...DEFAULT_PRODUCTS]; }
+/* ===================================================================
+   FIRESTORE — cache en memoria para no hacer múltiples lecturas
+   =================================================================== */
+let productsCache = [];
+
+async function refreshProducts() {
+  const snapshot = await getDocs(collection(db, 'products'));
+  productsCache = snapshot.docs.map(d => d.data());
 }
 
-function saveProducts(products) {
-  localStorage.setItem(STORAGE_KEYS.PRODUCTS, JSON.stringify(products));
+async function upsertProduct(product) {
+  await setDoc(doc(db, 'products', product.id), product);
+  const idx = productsCache.findIndex(p => p.id === product.id);
+  if (idx >= 0) productsCache[idx] = product;
+  else productsCache.push(product);
 }
+
+async function removeProduct(id) {
+  await deleteDoc(doc(db, 'products', id));
+  productsCache = productsCache.filter(p => p.id !== id);
+}
+
+async function seedIfEmpty() {
+  const snapshot = await getDocs(collection(db, 'products'));
+  if (!snapshot.empty) return;
+  const batch = writeBatch(db);
+  DEFAULT_PRODUCTS.forEach(p => batch.set(doc(db, 'products', p.id), p));
+  await batch.commit();
+  productsCache = [...DEFAULT_PRODUCTS];
+}
+
+function loadProducts() { return productsCache; }
 
 /* ===================================================================
    HELPERS
    =================================================================== */
-function fmt(n) {
-  return '$' + Number(n).toLocaleString('es-CL');
-}
-
-function genId() {
-  return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
-}
+function fmt(n) { return '$' + Number(n).toLocaleString('es-CL'); }
+function genId() { return 'p' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5); }
 
 let toastTimer;
 function toast(msg, type = '') {
@@ -106,15 +112,13 @@ function confirm(title, msg, onOk) {
   document.getElementById('confirmTitle').textContent = title;
   document.getElementById('confirmMsg').textContent = msg;
   modal.style.display = 'flex';
-  const okBtn = document.getElementById('confirmOk');
-  const cancelBtn = document.getElementById('confirmCancel');
   const close = () => { modal.style.display = 'none'; };
-  okBtn.onclick = () => { close(); onOk(); };
-  cancelBtn.onclick = close;
+  document.getElementById('confirmOk').onclick = async () => { close(); await onOk(); };
+  document.getElementById('confirmCancel').onclick = close;
 }
 
 /* ===================================================================
-   NAVEGACIÓN DE VISTAS
+   NAVEGACIÓN
    =================================================================== */
 const VIEWS = ['dashboard', 'products', 'add', 'settings'];
 const TITLES = { dashboard: 'Dashboard', products: 'Productos', add: 'Agregar Producto', settings: 'Configuración' };
@@ -123,9 +127,7 @@ function showView(name) {
   VIEWS.forEach(v => {
     document.getElementById('view-' + v).style.display = v === name ? '' : 'none';
   });
-  document.querySelectorAll('.nav-item').forEach(b => {
-    b.classList.toggle('active', b.dataset.view === name);
-  });
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.toggle('active', b.dataset.view === name));
   document.getElementById('pageTitle').textContent = TITLES[name];
   if (name === 'dashboard') renderDashboard();
   if (name === 'products') renderProductsTable();
@@ -154,44 +156,33 @@ function renderDashboard() {
   const critical = [...outOfStock, ...lowStock].sort((a, b) => a.stock - b.stock);
   document.getElementById('lowStockCount').textContent = critical.length + ' productos';
   const listEl = document.getElementById('lowStockList');
-  if (critical.length === 0) {
-    listEl.innerHTML = '<div style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">Todo en orden ✓</div>';
-  } else {
-    listEl.innerHTML = critical.map(p => `
-      <div class="low-stock-item">
-        <span class="low-stock-item__name">${p.emoji} ${p.name}</span>
-        <span class="low-stock-item__stock ${p.stock === 0 ? 'stock-0' : 'stock-low'}">
-          ${p.stock === 0 ? 'Sin stock' : p.stock + ' restantes'}
-        </span>
-      </div>
-    `).join('');
-  }
+  listEl.innerHTML = critical.length === 0
+    ? '<div style="padding:20px;text-align:center;color:#9ca3af;font-size:13px">Todo en orden ✓</div>'
+    : critical.map(p => `
+        <div class="low-stock-item">
+          <span class="low-stock-item__name">${p.emoji} ${p.name}</span>
+          <span class="low-stock-item__stock ${p.stock === 0 ? 'stock-0' : 'stock-low'}">
+            ${p.stock === 0 ? 'Sin stock' : p.stock + ' restantes'}
+          </span>
+        </div>`).join('');
 
   const cats = [
-    { name: 'Zapatos', key: 'zapatos', color: '#3b82f6' },
-    { name: 'Bolsos', key: 'bolsos', color: '#a855f7' },
-    { name: 'Accesorios', key: 'accesorios', color: '#16a34a' },
+    { name:'Zapatos', key:'zapatos', color:'#3b82f6' },
+    { name:'Bolsos', key:'bolsos', color:'#a855f7' },
+    { name:'Accesorios', key:'accesorios', color:'#16a34a' },
   ];
-  const catEl = document.getElementById('categoryStats');
-  catEl.innerHTML = cats.map(c => {
+  document.getElementById('categoryStats').innerHTML = cats.map(c => {
     const count = products.filter(p => p.category === c.key).length;
     const pct = products.length ? Math.round(count / products.length * 100) : 0;
-    return `
-      <div class="cat-stat">
-        <div class="cat-stat__header">
-          <span class="cat-stat__name">${c.name}</span>
-          <span class="cat-stat__count">${count} productos</span>
-        </div>
-        <div class="cat-stat__bar">
-          <div class="cat-stat__fill" style="width:${pct}%;background:${c.color}"></div>
-        </div>
-      </div>
-    `;
+    return `<div class="cat-stat">
+      <div class="cat-stat__header"><span class="cat-stat__name">${c.name}</span><span class="cat-stat__count">${count} productos</span></div>
+      <div class="cat-stat__bar"><div class="cat-stat__fill" style="width:${pct}%;background:${c.color}"></div></div>
+    </div>`;
   }).join('');
 }
 
 /* ===================================================================
-   PRODUCTS TABLE
+   TABLA DE PRODUCTOS
    =================================================================== */
 let searchQuery = '';
 let categoryFilterValue = '';
@@ -206,82 +197,59 @@ function renderProductsTable() {
   });
 
   tbody.innerHTML = filtered.map(p => {
-    let stockClass = 'stock-ok';
-    if (p.stock === 0) stockClass = 'stock-out';
-    else if (p.stock <= 5) stockClass = 'stock-low-badge';
-
+    let stockClass = p.stock === 0 ? 'stock-out' : (p.stock <= 5 ? 'stock-low-badge' : 'stock-ok');
     const thumb = p.imageUrl
-      ? `<div class="product-thumb"><img src="${p.imageUrl}" alt="${p.name}" onerror="this.parentElement.innerHTML='${p.emoji}'" /></div>`
+      ? `<div class="product-thumb"><img src="${p.imageUrl}" alt="${p.name}" onerror="this.parentElement.textContent='${p.emoji}'" /></div>`
       : `<div class="product-thumb">${p.emoji}</div>`;
-
     return `
       <tr data-id="${p.id}">
         <td>${thumb}</td>
         <td><div class="product-name-cell">${p.name}</div></td>
         <td><span class="cat-badge cat-${p.category}">${p.category}</span></td>
-        <td>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span>$</span>
-            <input class="price-input" type="number" value="${p.price}" data-field="price" data-id="${p.id}" min="0" />
-          </div>
-        </td>
-        <td>
-          <div style="display:flex;align-items:center;gap:6px">
-            <span>$</span>
-            <input class="price-input" type="number" value="${p.originalPrice || ''}" placeholder="—" data-field="originalPrice" data-id="${p.id}" min="0" />
-          </div>
-        </td>
-        <td>
-          <input class="stock-input" type="number" value="${p.stock}" data-field="stock" data-id="${p.id}" min="0" />
-        </td>
-        <td>
-          <span>
-            <span class="status-badge ${p.active !== false ? 'status-active' : 'status-inactive'}"></span>
-            ${p.active !== false ? 'Activo' : 'Inactivo'}
-          </span>
-        </td>
-        <td>
-          <div class="action-btns">
-            <button class="action-btn" title="Editar" data-action="edit" data-id="${p.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-            </button>
-            <button class="action-btn action-btn--delete" title="Eliminar" data-action="delete" data-id="${p.id}">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `;
+        <td><div style="display:flex;align-items:center;gap:6px"><span>$</span>
+          <input class="price-input" type="number" value="${p.price}" data-field="price" data-id="${p.id}" min="0" />
+        </div></td>
+        <td><div style="display:flex;align-items:center;gap:6px"><span>$</span>
+          <input class="price-input" type="number" value="${p.originalPrice || ''}" placeholder="—" data-field="originalPrice" data-id="${p.id}" min="0" />
+        </div></td>
+        <td><input class="stock-input" type="number" value="${p.stock}" data-field="stock" data-id="${p.id}" min="0" /></td>
+        <td><span><span class="status-badge ${p.active !== false ? 'status-active' : 'status-inactive'}"></span>${p.active !== false ? 'Activo' : 'Inactivo'}</span></td>
+        <td><div class="action-btns">
+          <button class="action-btn" title="Editar" data-action="edit" data-id="${p.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          </button>
+          <button class="action-btn action-btn--delete" title="Eliminar" data-action="delete" data-id="${p.id}">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
+          </button>
+        </div></td>
+      </tr>`;
   }).join('');
 
   if (filtered.length === 0) {
     tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:40px;color:#9ca3af">No se encontraron productos.</td></tr>';
   }
 
-  /* Inline price/stock edit — save on blur */
+  /* Edición inline — guarda en Firestore al perder foco */
   tbody.querySelectorAll('.price-input, .stock-input').forEach(input => {
-    input.addEventListener('blur', () => {
-      const products = loadProducts();
-      const p = products.find(x => x.id === input.dataset.id);
-      if (!p) return;
+    input.addEventListener('blur', async () => {
+      const product = productsCache.find(x => x.id === input.dataset.id);
+      if (!product) return;
       const val = input.value === '' ? null : Number(input.value);
-      p[input.dataset.field] = val;
-      saveProducts(products);
-      toast('Guardado ✓', 'success');
+      product[input.dataset.field] = val;
+      await upsertProduct(product);
+      toast('Guardado en Firebase ✓', 'success');
       renderDashboard();
     });
   });
 
-  /* Action buttons */
   tbody.querySelectorAll('[data-action]').forEach(btn => {
     btn.addEventListener('click', () => {
       const { action, id } = btn.dataset;
       if (action === 'edit') editProduct(id);
       if (action === 'delete') {
-        const p = loadProducts().find(x => x.id === id);
-        confirm('Eliminar producto', `¿Eliminar "${p?.name}"? Esta acción no se puede deshacer.`, () => {
-          const products = loadProducts().filter(x => x.id !== id);
-          saveProducts(products);
+        const p = productsCache.find(x => x.id === id);
+        confirm('Eliminar producto', `¿Eliminar "${p?.name}"? Esta acción no se puede deshacer.`, async () => {
+          await removeProduct(id);
           renderProductsTable();
           renderDashboard();
           toast('Producto eliminado', 'error');
@@ -292,7 +260,7 @@ function renderProductsTable() {
 }
 
 /* ===================================================================
-   ADD / EDIT PRODUCT FORM
+   FORMULARIO AGREGAR / EDITAR
    =================================================================== */
 function clearForm() {
   document.getElementById('editProductId').value = '';
@@ -301,7 +269,7 @@ function clearForm() {
 }
 
 function editProduct(id) {
-  const p = loadProducts().find(x => x.id === id);
+  const p = productsCache.find(x => x.id === id);
   if (!p) return;
   document.getElementById('editProductId').value = p.id;
   document.getElementById('pName').value = p.name;
@@ -324,23 +292,18 @@ function updateImagePreview() {
   const url = document.getElementById('pImageUrl')?.value.trim();
   const emoji = document.getElementById('pEmoji')?.value || '📦';
   const preview = document.getElementById('imagePreview');
-  const emojiEl = document.getElementById('imagePreviewEmoji');
   if (!preview) return;
-  if (url) {
-    preview.innerHTML = `<img src="${url}" alt="preview" onerror="this.parentElement.innerHTML='<span style=\\'font-size:48px\\'>${emoji}</span>'" />`;
-  } else {
-    preview.innerHTML = `<span style="font-size:48px">${emoji}</span>`;
-  }
+  preview.innerHTML = url
+    ? `<img src="${url}" alt="preview" onerror="this.parentElement.innerHTML='<span style=\\'font-size:48px\\'>${emoji}</span>'" />`
+    : `<span style="font-size:48px">${emoji}</span>`;
 }
 
 document.getElementById('pImageUrl').addEventListener('input', updateImagePreview);
 document.getElementById('pEmoji').addEventListener('input', updateImagePreview);
 
-document.getElementById('productForm').addEventListener('submit', e => {
+document.getElementById('productForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const products = loadProducts();
   const editId = document.getElementById('editProductId').value;
-
   const data = {
     id: editId || genId(),
     name: document.getElementById('pName').value.trim(),
@@ -358,16 +321,12 @@ document.getElementById('productForm').addEventListener('submit', e => {
     active: true,
   };
 
-  if (editId) {
-    const idx = products.findIndex(p => p.id === editId);
-    if (idx >= 0) products[idx] = data;
-    toast('Producto actualizado ✓', 'success');
-  } else {
-    products.push(data);
-    toast('Producto agregado ✓', 'success');
-  }
-
-  saveProducts(products);
+  const btn = document.getElementById('submitProductBtn');
+  btn.textContent = 'Guardando...';
+  btn.disabled = true;
+  await upsertProduct(data);
+  btn.disabled = false;
+  toast(editId ? 'Producto actualizado ✓' : 'Producto agregado ✓', 'success');
   clearForm();
   showView('products');
 });
@@ -378,7 +337,7 @@ document.getElementById('cancelEdit').addEventListener('click', () => {
 });
 
 /* ===================================================================
-   SEARCH & FILTER
+   BÚSQUEDA Y FILTROS
    =================================================================== */
 document.getElementById('productSearch').addEventListener('input', e => {
   searchQuery = e.target.value.toLowerCase().trim();
@@ -404,13 +363,17 @@ function exportProducts() {
   toast('Backup exportado ✓', 'success');
 }
 
-function importProducts(file) {
+async function importProducts(file) {
   const reader = new FileReader();
-  reader.onload = e => {
+  reader.onload = async e => {
     try {
       const data = JSON.parse(e.target.result);
       if (!Array.isArray(data)) throw new Error();
-      saveProducts(data);
+      const batch = writeBatch(db);
+      productsCache.forEach(p => batch.delete(doc(db, 'products', p.id)));
+      data.forEach(p => batch.set(doc(db, 'products', p.id), p));
+      await batch.commit();
+      productsCache = data;
       renderProductsTable();
       renderDashboard();
       toast(`${data.length} productos importados ✓`, 'success');
@@ -423,7 +386,6 @@ function importProducts(file) {
 
 document.getElementById('exportBtn').addEventListener('click', exportProducts);
 document.getElementById('exportBtnSettings').addEventListener('click', exportProducts);
-
 document.getElementById('importFile').addEventListener('change', e => {
   if (e.target.files[0]) importProducts(e.target.files[0]);
   e.target.value = '';
@@ -434,8 +396,12 @@ document.getElementById('importFileSettings').addEventListener('change', e => {
 });
 
 document.getElementById('resetProductsBtn').addEventListener('click', () => {
-  confirm('Restaurar productos', 'Se borrarán todos los cambios y se volverán a los productos por defecto. ¿Continuar?', () => {
-    saveProducts([...DEFAULT_PRODUCTS]);
+  confirm('Restaurar productos', 'Se reemplazarán todos los productos por los de fábrica. ¿Continuar?', async () => {
+    const batch = writeBatch(db);
+    productsCache.forEach(p => batch.delete(doc(db, 'products', p.id)));
+    DEFAULT_PRODUCTS.forEach(p => batch.set(doc(db, 'products', p.id), p));
+    await batch.commit();
+    productsCache = [...DEFAULT_PRODUCTS];
     renderProductsTable();
     renderDashboard();
     toast('Productos restaurados', 'success');
@@ -443,7 +409,7 @@ document.getElementById('resetProductsBtn').addEventListener('click', () => {
 });
 
 /* ===================================================================
-   CHANGE PASSWORD
+   CAMBIO DE CONTRASEÑA
    =================================================================== */
 document.getElementById('changePasswordForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -452,14 +418,13 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
   const newVal = document.getElementById('newPwd').value;
   const confirmVal = document.getElementById('confirmPwd').value;
 
-  const currentHash = await sha256(currentVal);
-  if (currentHash !== getStoredHash()) {
+  if (await sha256(currentVal) !== getStoredHash()) {
     errEl.textContent = 'La contraseña actual es incorrecta.';
     errEl.style.display = 'block';
     return;
   }
   if (newVal.length < 6) {
-    errEl.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.';
+    errEl.textContent = 'Mínimo 6 caracteres.';
     errEl.style.display = 'block';
     return;
   }
@@ -468,10 +433,8 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
     errEl.style.display = 'block';
     return;
   }
-
   errEl.style.display = 'none';
-  const newHash = await sha256(newVal);
-  localStorage.setItem(STORAGE_KEYS.PWD_HASH, newHash);
+  localStorage.setItem(STORAGE_KEYS.PWD_HASH, await sha256(newVal));
   document.getElementById('changePasswordForm').reset();
   toast('Contraseña actualizada ✓', 'success');
 });
@@ -481,14 +444,12 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
    =================================================================== */
 document.getElementById('loginForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const pwd = document.getElementById('loginPassword').value;
-  const hash = await sha256(pwd);
+  const hash = await sha256(document.getElementById('loginPassword').value);
   const errEl = document.getElementById('loginError');
-
   if (hash === getStoredHash()) {
     errEl.style.display = 'none';
     createSession();
-    showAdmin();
+    await showAdmin();
   } else {
     errEl.style.display = 'block';
     document.getElementById('loginPassword').value = '';
@@ -503,15 +464,12 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
   document.getElementById('loginPassword').value = '';
 });
 
-/* Toggle password visibility */
 document.getElementById('togglePwd').addEventListener('click', () => {
   const input = document.getElementById('loginPassword');
   input.type = input.type === 'password' ? 'text' : 'password';
 });
 
-/* ===================================================================
-   SIDEBAR NAVIGATION
-   =================================================================== */
+/* ===== SIDEBAR ===== */
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.dataset.view === 'add') clearForm();
@@ -522,14 +480,23 @@ document.querySelectorAll('.nav-item').forEach(btn => {
 /* ===================================================================
    INIT
    =================================================================== */
-function showAdmin() {
+async function showAdmin() {
   document.getElementById('loginScreen').style.display = 'none';
   document.getElementById('adminApp').style.display = 'grid';
   document.getElementById('topbarDate').textContent = new Date().toLocaleDateString('es-CL', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+
+  /* Mostrar estado de carga */
+  document.getElementById('pageTitle').textContent = 'Cargando...';
+  try {
+    await seedIfEmpty();
+    await refreshProducts();
+  } catch (err) {
+    console.error('Error cargando productos de Firebase:', err);
+    toast('Error al conectar con Firebase', 'error');
+  }
   showView('dashboard');
 }
 
-/* Si ya hay sesión válida, entrar directo */
 if (isLoggedIn()) {
   showAdmin();
 }
