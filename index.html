@@ -13,10 +13,7 @@
   <!-- NAV -->
   <nav class="nav">
     <div class="nav__logo">STRIDE</div>
-    <ul class="nav__links">
-      <li><a href="#zapatos">Zapatos</a></li>
-      <li><a href="#bolsos">Bolsos</a></li>
-      <li><a href="#accesorios">Accesorios</a></li>
+    <ul class="nav__links" id="navCatLinks">
       <li><a href="#ofertas">Ofertas</a></li>
     </ul>
     <div class="nav__actions">
@@ -38,7 +35,7 @@
       <h1 class="hero__title">Domina<br/>cada paso.</h1>
       <p class="hero__sub">Zapatos, bolsos y accesorios de lujo accesible. Estilo sin compromisos.</p>
       <div class="hero__cta">
-        <a href="#zapatos" class="btn btn--primary">Comprar Ahora</a>
+        <a href="#dynamicSections" class="btn btn--primary">Comprar Ahora</a>
         <a href="#coleccion" class="btn btn--outline">Ver Colección</a>
       </div>
     </div>
@@ -54,29 +51,7 @@
   <!-- CATEGORÍAS -->
   <section class="categories" id="coleccion">
     <div class="container">
-      <div class="categories__grid">
-        <div class="category-card category-card--shoes" onclick="scrollTo('#zapatos')">
-          <div class="category-card__img cat-img--shoes"></div>
-          <div class="category-card__info">
-            <h3>Zapatos</h3>
-            <span>Ver todo →</span>
-          </div>
-        </div>
-        <div class="category-card category-card--bags" onclick="scrollTo('#bolsos')">
-          <div class="category-card__img cat-img--bags"></div>
-          <div class="category-card__info">
-            <h3>Bolsos</h3>
-            <span>Ver todo →</span>
-          </div>
-        </div>
-        <div class="category-card category-card--acc" onclick="scrollTo('#accesorios')">
-          <div class="category-card__img cat-img--acc"></div>
-          <div class="category-card__info">
-            <h3>Accesorios</h3>
-            <span>Ver todo →</span>
-          </div>
-        </div>
-      </div>
+      <div class="categories__grid" id="catGrid"></div>
     </div>
   </section>
 
@@ -86,46 +61,13 @@
       <div class="promo-banner__inner">
         <span class="promo-tag">Oferta Flash</span>
         <h2>Hasta 40% OFF<br/>en seleccionados</h2>
-        <a href="#zapatos" class="btn btn--white">Aprovechar ahora</a>
+        <a href="#dynamicSections" class="btn btn--white">Aprovechar ahora</a>
       </div>
     </div>
   </section>
 
-  <!-- ZAPATOS -->
-  <section class="products-section" id="zapatos">
-    <div class="container">
-      <div class="section-header">
-        <h2>Zapatos</h2>
-        <div class="filters" id="shoeFilters">
-          <button class="filter-btn active" data-filter="all">Todos</button>
-          <button class="filter-btn" data-filter="running">Running</button>
-          <button class="filter-btn" data-filter="casual">Casual</button>
-          <button class="filter-btn" data-filter="formal">Formal</button>
-        </div>
-      </div>
-      <div class="products-grid" id="shoesGrid"></div>
-    </div>
-  </section>
-
-  <!-- BOLSOS -->
-  <section class="products-section products-section--alt" id="bolsos">
-    <div class="container">
-      <div class="section-header">
-        <h2>Bolsos</h2>
-      </div>
-      <div class="products-grid" id="bagsGrid"></div>
-    </div>
-  </section>
-
-  <!-- ACCESORIOS -->
-  <section class="products-section" id="accesorios">
-    <div class="container">
-      <div class="section-header">
-        <h2>Accesorios</h2>
-      </div>
-      <div class="products-grid" id="accGrid"></div>
-    </div>
-  </section>
+  <!-- SECCIONES DINÁMICAS DE PRODUCTOS -->
+  <div id="dynamicSections"></div>
 
   <!-- TRUST BADGES -->
   <section class="trust">
@@ -165,10 +107,7 @@
         </div>
         <div class="footer__col">
           <h5>Tienda</h5>
-          <ul>
-            <li><a href="#zapatos">Zapatos</a></li>
-            <li><a href="#bolsos">Bolsos</a></li>
-            <li><a href="#accesorios">Accesorios</a></li>
+          <ul id="footerCatLinks">
             <li><a href="#ofertas">Ofertas</a></li>
           </ul>
         </div>
@@ -211,18 +150,9 @@
     </div>
     <div class="cart-drawer__footer" id="cartFooter" style="display:none">
       <div class="cart-summary">
-        <div class="cart-summary__row">
-          <span>Subtotal</span>
-          <span id="cartSubtotal">$0</span>
-        </div>
-        <div class="cart-summary__row">
-          <span>Envío</span>
-          <span id="cartShipping">Gratis</span>
-        </div>
-        <div class="cart-summary__row cart-summary__row--total">
-          <span>Total</span>
-          <span id="cartTotal">$0</span>
-        </div>
+        <div class="cart-summary__row"><span>Subtotal</span><span id="cartSubtotal">$0</span></div>
+        <div class="cart-summary__row"><span>Envío</span><span id="cartShipping">Gratis</span></div>
+        <div class="cart-summary__row cart-summary__row--total"><span>Total</span><span id="cartTotal">$0</span></div>
       </div>
       <button class="btn btn--primary btn--full" id="checkoutBtn">Ir al Checkout</button>
     </div>
@@ -237,79 +167,38 @@
       </div>
       <div class="modal__body">
         <div class="checkout-steps">
-          <div class="step active" id="step1">
-            <div class="step__indicator">1</div>
-            <span>Datos</span>
-          </div>
+          <div class="step active" id="step1"><div class="step__indicator">1</div><span>Datos</span></div>
           <div class="step-line"></div>
-          <div class="step" id="step2">
-            <div class="step__indicator">2</div>
-            <span>Pago</span>
-          </div>
+          <div class="step" id="step2"><div class="step__indicator">2</div><span>Pago</span></div>
           <div class="step-line"></div>
-          <div class="step" id="step3">
-            <div class="step__indicator">3</div>
-            <span>Confirmación</span>
-          </div>
+          <div class="step" id="step3"><div class="step__indicator">3</div><span>Confirmación</span></div>
         </div>
-
-        <!-- Paso 1: Datos personales -->
         <form class="checkout-form" id="checkoutForm1">
           <h4>Datos de Envío</h4>
           <div class="form-row">
-            <div class="form-group">
-              <label>Nombre</label>
-              <input type="text" placeholder="Juan" required />
-            </div>
-            <div class="form-group">
-              <label>Apellido</label>
-              <input type="text" placeholder="Pérez" required />
-            </div>
+            <div class="form-group"><label>Nombre</label><input type="text" placeholder="Juan" required /></div>
+            <div class="form-group"><label>Apellido</label><input type="text" placeholder="Pérez" required /></div>
           </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input type="email" placeholder="juan@email.com" required />
-          </div>
-          <div class="form-group">
-            <label>Teléfono</label>
-            <input type="tel" placeholder="+56 9 1234 5678" required />
-          </div>
-          <div class="form-group">
-            <label>Dirección</label>
-            <input type="text" placeholder="Av. Providencia 1234, Depto 5" required />
-          </div>
+          <div class="form-group"><label>Email</label><input type="email" placeholder="juan@email.com" required /></div>
+          <div class="form-group"><label>Teléfono</label><input type="tel" placeholder="+56 9 1234 5678" required /></div>
+          <div class="form-group"><label>Dirección</label><input type="text" placeholder="Av. Providencia 1234, Depto 5" required /></div>
           <div class="form-row">
-            <div class="form-group">
-              <label>Ciudad</label>
-              <input type="text" placeholder="Santiago" required />
-            </div>
+            <div class="form-group"><label>Ciudad</label><input type="text" placeholder="Santiago" required /></div>
             <div class="form-group">
               <label>Región</label>
               <select required>
                 <option value="">Seleccionar...</option>
-                <option>Metropolitana</option>
-                <option>Valparaíso</option>
-                <option>Biobío</option>
-                <option>La Araucanía</option>
-                <option>O'Higgins</option>
-                <option>Maule</option>
-                <option>Los Lagos</option>
-                <option>Antofagasta</option>
-                <option>Atacama</option>
-                <option>Coquimbo</option>
-                <option>Los Ríos</option>
-                <option>Aysén</option>
-                <option>Magallanes</option>
-                <option>Arica y Parinacota</option>
-                <option>Tarapacá</option>
-                <option>Ñuble</option>
+                <option>Metropolitana</option><option>Valparaíso</option><option>Biobío</option>
+                <option>La Araucanía</option><option>O'Higgins</option><option>Maule</option>
+                <option>Los Lagos</option><option>Antofagasta</option><option>Atacama</option>
+                <option>Coquimbo</option><option>Los Ríos</option><option>Aysén</option>
+                <option>Magallanes</option><option>Arica y Parinacota</option>
+                <option>Tarapacá</option><option>Ñuble</option>
               </select>
             </div>
           </div>
           <button type="submit" class="btn btn--primary btn--full">Continuar al Pago</button>
         </form>
-
-        <!-- Paso 2: Pago -->
         <form class="checkout-form" id="checkoutForm2" style="display:none">
           <h4>Método de Pago</h4>
           <div class="payment-methods">
@@ -329,24 +218,12 @@
             </label>
           </div>
           <div class="card-form" id="cardForm">
-            <div class="form-group">
-              <label>Número de Tarjeta</label>
-              <input type="text" placeholder="1234 5678 9012 3456" maxlength="19" id="cardNumber" />
-            </div>
+            <div class="form-group"><label>Número de Tarjeta</label><input type="text" placeholder="1234 5678 9012 3456" maxlength="19" id="cardNumber" /></div>
             <div class="form-row">
-              <div class="form-group">
-                <label>Vencimiento</label>
-                <input type="text" placeholder="MM/AA" maxlength="5" id="cardExpiry" />
-              </div>
-              <div class="form-group">
-                <label>CVV</label>
-                <input type="text" placeholder="123" maxlength="4" id="cardCvv" />
-              </div>
+              <div class="form-group"><label>Vencimiento</label><input type="text" placeholder="MM/AA" maxlength="5" id="cardExpiry" /></div>
+              <div class="form-group"><label>CVV</label><input type="text" placeholder="123" maxlength="4" id="cardCvv" /></div>
             </div>
-            <div class="form-group">
-              <label>Nombre en la Tarjeta</label>
-              <input type="text" placeholder="JUAN PÉREZ" />
-            </div>
+            <div class="form-group"><label>Nombre en la Tarjeta</label><input type="text" placeholder="JUAN PÉREZ" /></div>
           </div>
           <div class="transfer-info" id="transferInfo" style="display:none">
             <div class="info-box">
@@ -362,8 +239,6 @@
           <button type="submit" class="btn btn--primary btn--full">Confirmar Pedido</button>
           <button type="button" class="btn btn--outline btn--full" id="backToStep1">← Volver</button>
         </form>
-
-        <!-- Paso 3: Confirmación -->
         <div class="checkout-success" id="checkoutSuccess" style="display:none">
           <div class="success-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="16 8 10 14 8 12"/></svg>
@@ -374,6 +249,103 @@
           <button class="btn btn--primary" id="continueShopping">Seguir Comprando</button>
         </div>
       </div>
+    </div>
+  </div>
+
+  <!-- ===== MODAL DETALLE DE PRODUCTO (PDP) ===== -->
+  <div class="pdp-overlay" id="pdpOverlay" aria-hidden="true">
+    <div class="pdp-modal" id="pdpModal">
+      <button class="pdp-close" id="pdpClose" aria-label="Cerrar">✕</button>
+      <div class="pdp-body">
+        <!-- Galería -->
+        <div class="pdp-gallery">
+          <div class="pdp-thumbs" id="pdpThumbs"></div>
+          <div class="pdp-main-img" id="pdpMainImg"></div>
+        </div>
+        <!-- Info -->
+        <div class="pdp-info">
+          <div class="pdp-badges" id="pdpBadges"></div>
+          <h2 class="pdp-name" id="pdpName"></h2>
+          <div class="pdp-subcat" id="pdpSubcat"></div>
+          <div class="pdp-stars" id="pdpStars"></div>
+          <div class="pdp-prices" id="pdpPrices"></div>
+
+          <div class="pdp-opt-section">
+            <div class="pdp-opt-label">Color</div>
+            <div class="pdp-colors" id="pdpColors"></div>
+          </div>
+
+          <div class="pdp-opt-section">
+            <div class="pdp-opt-label-row">
+              <span class="pdp-opt-label">Talla</span>
+              <button class="pdp-size-guide-link" id="openSizeGuide">Ver guía de tallas →</button>
+            </div>
+            <div class="pdp-sizes" id="pdpSizes"></div>
+          </div>
+
+          <button class="pdp-cart-btn" id="pdpCartBtn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            Agregar al Carrito
+          </button>
+
+          <details class="pdp-accordion" id="pdpDescAccordion">
+            <summary>Descripción del Producto</summary>
+            <div class="pdp-accordion-body" id="pdpDescBody"></div>
+          </details>
+          <details class="pdp-accordion" id="pdpSpecsAccordion">
+            <summary>Materiales & Cuidados</summary>
+            <div class="pdp-accordion-body" id="pdpSpecsBody"></div>
+          </details>
+        </div>
+      </div>
+
+      <!-- Reseñas -->
+      <div class="pdp-reviews-section">
+        <div class="pdp-reviews-header">
+          <h3>Reseñas y Opiniones</h3>
+          <div class="pdp-reviews-summary" id="pdpReviewsSummary"></div>
+        </div>
+        <div class="pdp-reviews-list" id="pdpReviewsList">
+          <div class="reviews-loading">Cargando reseñas...</div>
+        </div>
+        <div class="pdp-review-form">
+          <h4>Escribe una Reseña</h4>
+          <form id="reviewForm">
+            <div class="review-form-row">
+              <div class="form-group">
+                <label>Tu Nombre</label>
+                <input type="text" id="reviewName" placeholder="Juan Pérez" required />
+              </div>
+              <div class="form-group">
+                <label>Calificación</label>
+                <div class="star-picker" id="starPicker">
+                  <span class="star-pick" data-val="1">★</span>
+                  <span class="star-pick" data-val="2">★</span>
+                  <span class="star-pick" data-val="3">★</span>
+                  <span class="star-pick" data-val="4">★</span>
+                  <span class="star-pick" data-val="5">★</span>
+                </div>
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Comentario</label>
+              <textarea id="reviewComment" rows="3" placeholder="¿Cómo fue tu experiencia con este producto?" required></textarea>
+            </div>
+            <button type="submit" class="btn btn--primary">Publicar Reseña</button>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL GUÍA DE TALLAS -->
+  <div class="sg-overlay" id="sgOverlay" aria-hidden="true">
+    <div class="sg-modal">
+      <div class="sg-header">
+        <h3>Guía de Tallas</h3>
+        <button class="sg-close" id="sgClose">✕</button>
+      </div>
+      <div class="sg-body" id="sgBody"></div>
     </div>
   </div>
 
