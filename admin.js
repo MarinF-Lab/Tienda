@@ -1,6 +1,6 @@
 import { db, storage } from './firebase-config.js';
 import {
-  collection, getDocs, setDoc, deleteDoc, doc, writeBatch, addDoc
+  collection, getDocs, getDoc, setDoc, deleteDoc, doc, writeBatch, addDoc
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 import {
   ref, uploadBytesResumable, getDownloadURL
@@ -104,6 +104,117 @@ let productsCache = [];
 let categoriesCache = [];
 let reviewsCache = [];
 let selectedColors = [];
+let sizeStockData = {};
+
+/* ===================================================================
+   TALLAS PREDEFINIDAS POR CATEGORÍA
+   =================================================================== */
+const PRESET_SIZES = {
+  zapatos:    ['35','36','37','38','39','40','41','42','43','44','45','46'],
+  bolsos:     ['XS','S','M','L','XL','Único'],
+  accesorios: ['XS','S','M','L','XL','XXL','Único'],
+};
+
+/* ===================================================================
+   SELECTOR DE TALLAS Y STOCK
+   =================================================================== */
+function renderSizeStockManager(category) {
+  const container = document.getElementById('sizeStockManager');
+  if (!container) return;
+  const presets = PRESET_SIZES[category] || PRESET_SIZES.accesorios;
+
+  container.innerHTML = `
+    <div class="ss-presets">
+      ${presets.map(s => `
+        <button type="button" class="ss-preset-btn${Object.prototype.hasOwnProperty.call(sizeStockData, s) ? ' active' : ''}" data-size="${s}">${s}</button>
+      `).join('')}
+    </div>
+    <div class="ss-custom-row">
+      <input type="text" id="ssCustomInput" placeholder="Talla personalizada..." class="ss-custom-input" />
+      <button type="button" id="ssAddCustomBtn" class="btn-admin btn-admin--outline ss-add-btn">+ Agregar</button>
+    </div>
+    <div class="ss-selected-list" id="ssSelectedList"></div>
+  `;
+
+  _renderSizeList(category);
+
+  container.querySelectorAll('.ss-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const size = btn.dataset.size;
+      if (Object.prototype.hasOwnProperty.call(sizeStockData, size)) {
+        delete sizeStockData[size];
+      } else {
+        sizeStockData[size] = 0;
+      }
+      renderSizeStockManager(category);
+    });
+  });
+
+  const customInput = document.getElementById('ssCustomInput');
+  document.getElementById('ssAddCustomBtn').addEventListener('click', () => {
+    const val = customInput.value.trim();
+    if (!val) return;
+    if (!Object.prototype.hasOwnProperty.call(sizeStockData, val)) sizeStockData[val] = 0;
+    customInput.value = '';
+    renderSizeStockManager(category);
+  });
+  customInput.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); document.getElementById('ssAddCustomBtn').click(); }
+  });
+}
+
+function _renderSizeList(category) {
+  const list = document.getElementById('ssSelectedList');
+  if (!list) return;
+  const entries = Object.entries(sizeStockData);
+  if (!entries.length) {
+    list.innerHTML = '<p class="ss-empty">Ninguna talla seleccionada. Haz clic en las tallas de arriba para agregarlas.</p>';
+    return;
+  }
+  const total = entries.reduce((s, [,v]) => s + v, 0);
+  list.innerHTML = `
+    <div class="ss-list-header"><span>Talla</span><span>Unidades en stock</span></div>
+    ${entries.map(([size, qty]) => `
+      <div class="ss-row">
+        <span class="ss-size-name">${size}</span>
+        <div class="ss-qty-wrap">
+          <button type="button" class="ss-qty-btn ss-minus" data-size="${size}">−</button>
+          <input type="number" class="ss-qty-input" value="${qty}" min="0" data-size="${size}" />
+          <button type="button" class="ss-qty-btn ss-plus" data-size="${size}">+</button>
+        </div>
+        <button type="button" class="ss-remove" data-size="${size}" title="Quitar">×</button>
+      </div>
+    `).join('')}
+    <div class="ss-total">Stock total: <strong>${total}</strong> unidades</div>
+  `;
+
+  list.querySelectorAll('.ss-qty-input').forEach(input => {
+    input.addEventListener('change', () => {
+      sizeStockData[input.dataset.size] = Math.max(0, parseInt(input.value) || 0);
+      _renderSizeList(category);
+    });
+  });
+  list.querySelectorAll('.ss-minus').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = btn.dataset.size;
+      sizeStockData[s] = Math.max(0, (sizeStockData[s] || 0) - 1);
+      _renderSizeList(category);
+    });
+  });
+  list.querySelectorAll('.ss-plus').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const s = btn.dataset.size;
+      sizeStockData[s] = (sizeStockData[s] || 0) + 1;
+      _renderSizeList(category);
+    });
+  });
+  list.querySelectorAll('.ss-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      delete sizeStockData[btn.dataset.size];
+      renderSizeStockManager(category);
+    });
+  });
+}
 
 async function refreshProducts() {
   const snapshot = await getDocs(collection(db, 'products'));
@@ -196,6 +307,7 @@ function showView(name) {
   if (name === 'products') renderProductsTable();
   if (name === 'categories') renderCategoriesView();
   if (name === 'reviews') renderReviewsView();
+  if (name === 'settings') renderSettingsSgEditor(settingsSgCurrentType);
   if (name === 'add') {
     const editId = document.getElementById('editProductId').value;
     document.getElementById('formTitle').textContent = editId ? 'Editar Producto' : 'Agregar Producto';
@@ -295,7 +407,12 @@ function renderProductsTable() {
         <td><div style="display:flex;align-items:center;gap:4px"><span>%</span>
           <input class="price-input" type="number" value="${p.discountPct||''}" placeholder="0" data-field="discountPct" data-id="${p.id}" min="0" max="99" style="width:60px" />
         </div></td>
-        <td><input class="stock-input" type="number" value="${p.stock}" data-field="stock" data-id="${p.id}" min="0" /></td>
+        <td>
+          <div class="ss-stock-cell">
+            <input class="stock-input" type="number" value="${p.stock}" data-field="stock" data-id="${p.id}" min="0" ${p.sizeStock ? 'readonly title="Calculado por talla"' : ''} />
+            ${p.sizeStock ? `<div class="ss-badges-wrap">${Object.entries(p.sizeStock).map(([s,q])=>`<span class="ss-badge${q===0?' ss-badge--zero':''}">${s}:${q}</span>`).join('')}</div>` : ''}
+          </div>
+        </td>
         <td><span><span class="status-badge ${p.active !== false ? 'status-active' : 'status-inactive'}"></span>${p.active !== false ? 'Activo' : 'Inactivo'}</span></td>
         <td><div class="action-btns">
           <button class="action-btn" title="Editar" data-action="edit" data-id="${p.id}">
@@ -369,7 +486,6 @@ function renderImagesGrid() {
 document.getElementById('imageFileInput').addEventListener('change', async e => {
   const file = e.target.files[0];
   if (!file) return;
-  if (file.size > 5 * 1024 * 1024) { toast('La imagen supera 5 MB', 'error'); return; }
 
   const productId = document.getElementById('editProductId').value || genId();
   const storageRef = ref(storage, `products/${productId}/${Date.now()}_${file.name}`);
@@ -417,6 +533,50 @@ document.getElementById('pDiscountPct').addEventListener('input', () => {
     document.getElementById('pOriginalPrice').value = orig;
   }
 });
+
+/* ===================================================================
+   GUÍAS DE TALLAS (GLOBAL)
+   =================================================================== */
+let globalSizeGuides = null;
+let settingsSgBuffer = { shoes: null, clothing: null, accessories: null };
+let settingsSgCurrentType = 'shoes';
+
+async function loadGlobalSizeGuides() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'sizeGuides'));
+    if (snap.exists()) { globalSizeGuides = snap.data(); return; }
+  } catch(e) { console.warn('No se pudieron cargar las guías de tallas', e); }
+  globalSizeGuides = null;
+}
+
+async function saveGlobalSizeGuides() {
+  settingsSgBuffer[settingsSgCurrentType] = readSizeGuideFromRoot(
+    document.getElementById('settingsSgEditorRoot'), settingsSgCurrentType
+  );
+  const data = {
+    shoes:       settingsSgBuffer.shoes       || DEFAULT_SG.shoes(),
+    clothing:    settingsSgBuffer.clothing    || DEFAULT_SG.clothing(),
+    accessories: settingsSgBuffer.accessories || DEFAULT_SG.accessories(),
+  };
+  try {
+    await setDoc(doc(db, 'settings', 'sizeGuides'), data);
+    globalSizeGuides = data;
+    toast('Guías de tallas guardadas ✓', 'success');
+  } catch(e) {
+    toast('Error al guardar guías: ' + e.message, 'error');
+  }
+}
+
+function renderSettingsSgEditor(type) {
+  const rootEl = document.getElementById('settingsSgEditorRoot');
+  if (rootEl && rootEl.children.length) {
+    settingsSgBuffer[settingsSgCurrentType] = readSizeGuideFromRoot(rootEl, settingsSgCurrentType);
+  }
+  if (type) settingsSgCurrentType = type;
+  const data = settingsSgBuffer[settingsSgCurrentType]
+    || (globalSizeGuides ? globalSizeGuides[settingsSgCurrentType] : null);
+  renderSizeGuideIntoRoot(rootEl, settingsSgCurrentType, data);
+}
 
 /* ===================================================================
    SELECTOR DE COLORES
@@ -552,61 +712,57 @@ function wireTable(root, tableId) {
   });
 }
 
-function renderSizeGuideEditor(category, data) {
-  const root = document.getElementById('sgEditorRoot');
-  if (!root) return;
-  const type = sgType(category);
+function renderSizeGuideIntoRoot(rootEl, type, data) {
+  if (!rootEl) return;
   const d = data?.type === type ? data : DEFAULT_SG[type]();
+  const px = type; // use type as ID prefix to avoid clashes
 
   if (type === 'accessories') {
-    root.innerHTML = `<textarea id="sgAccessoriesDesc" class="sget-desc" rows="4" placeholder="Ej: Talla única. Ajustable de 80–120 cm. Largo: 25 cm.">${d.description||''}</textarea>`;
+    rootEl.innerHTML = `<textarea id="sga-${px}-desc" class="sget-desc" rows="4" placeholder="Ej: Talla única. Ajustable de 80–120 cm. Largo: 25 cm.">${d.description||''}</textarea>`;
     return;
   }
 
   const paneHtml = (gender) => {
-    const gd = d[gender];
+    const gd = d[gender] || {};
     let html = `<div class="sget-pane" data-gender="${gender}" ${gender==='female'?'style="display:none"':''}>`;
     html += `<p class="sget-sublabel">Tabla de tallas</p>`;
-    html += buildEditableTable(type==='shoes' ? gd : (gd.sizes||gd), `sgt-${gender}-sizes`);
+    html += buildEditableTable(type==='shoes' ? gd : (gd.sizes||gd), `sgt-${px}-${gender}-sizes`);
     if (type === 'clothing') {
       html += `<p class="sget-sublabel" style="margin-top:18px">Medidas exactas (cm)</p>`;
-      html += buildEditableTable(gd.measurements||mkTable(['Talla','Ancho (cm)','Alto (cm)'],mkRows(10,3)), `sgt-${gender}-meas`);
+      html += buildEditableTable(gd.measurements||mkTable(['Talla','Ancho (cm)','Alto (cm)'],mkRows(10,3)), `sgt-${px}-${gender}-meas`);
     }
     html += '</div>';
     return html;
   };
 
-  root.innerHTML = `
+  rootEl.innerHTML = `
     <div class="sget-tabs">
       <button type="button" class="sget-tab active" data-g="male">Masculino / Unisex</button>
       <button type="button" class="sget-tab" data-g="female">Femenino</button>
     </div>
     ${paneHtml('male')}${paneHtml('female')}`;
 
-  root.querySelectorAll('.sget-tab').forEach(tab => {
+  rootEl.querySelectorAll('.sget-tab').forEach(tab => {
     tab.addEventListener('click', () => {
-      root.querySelectorAll('.sget-tab').forEach(t => t.classList.remove('active'));
+      rootEl.querySelectorAll('.sget-tab').forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      root.querySelectorAll('.sget-pane').forEach(p => { p.style.display = p.dataset.gender === tab.dataset.g ? '' : 'none'; });
+      rootEl.querySelectorAll('.sget-pane').forEach(p => { p.style.display = p.dataset.gender === tab.dataset.g ? '' : 'none'; });
     });
   });
 
-  wireTable(root, 'sgt-male-sizes');
-  wireTable(root, 'sgt-female-sizes');
-  if (type === 'clothing') { wireTable(root, 'sgt-male-meas'); wireTable(root, 'sgt-female-meas'); }
+  wireTable(rootEl, `sgt-${px}-male-sizes`);
+  wireTable(rootEl, `sgt-${px}-female-sizes`);
+  if (type === 'clothing') { wireTable(rootEl, `sgt-${px}-male-meas`); wireTable(rootEl, `sgt-${px}-female-meas`); }
 }
 
-function readSizeGuideData() {
-  const root = document.getElementById('sgEditorRoot');
-  if (!root) return null;
-  const descEl = document.getElementById('sgAccessoriesDesc');
+function readSizeGuideFromRoot(rootEl, type) {
+  if (!rootEl) return null;
+  const px = type;
+  const descEl = rootEl.querySelector(`#sga-${px}-desc`);
   if (descEl) return { type:'accessories', description: descEl.value.trim() };
 
-  const cat = document.getElementById('pCategory').value;
-  const type = sgType(cat);
-
   const readTable = (id) => {
-    const wrap = document.getElementById(id);
+    const wrap = rootEl.querySelector(`#${id}`) || document.getElementById(id);
     if (!wrap) return null;
     const headers = Array.from(wrap.querySelectorAll('thead .sget-th')).map(i => i.value.trim());
     const rows = Array.from(wrap.querySelectorAll('tbody tr')).map(tr =>
@@ -618,11 +774,11 @@ function readSizeGuideData() {
   const result = { type };
   ['male','female'].forEach(g => {
     if (type === 'shoes') {
-      result[g] = readTable(`sgt-${g}-sizes`) || { headers:[], rows:[] };
+      result[g] = readTable(`sgt-${px}-${g}-sizes`) || { headers:[], rows:[] };
     } else {
       result[g] = {
-        sizes: readTable(`sgt-${g}-sizes`) || { headers:[], rows:[] },
-        measurements: readTable(`sgt-${g}-meas`) || { headers:[], rows:[] },
+        sizes: readTable(`sgt-${px}-${g}-sizes`) || { headers:[], rows:[] },
+        measurements: readTable(`sgt-${px}-${g}-meas`) || { headers:[], rows:[] },
       };
     }
   });
@@ -638,13 +794,15 @@ function clearForm() {
   currentImages = [];
   renderImagesGrid();
   selectedColors = [];
+  sizeStockData = {};
   renderColorPicker();
-  renderSizeGuideEditor(document.getElementById('pCategory').value || 'zapatos', null);
+  renderSizeStockManager(document.getElementById('pCategory').value || 'zapatos');
 }
 
-/* Re-render size guide editor when category changes */
+/* Re-render size stock manager when category changes */
 document.getElementById('pCategory').addEventListener('change', () => {
-  renderSizeGuideEditor(document.getElementById('pCategory').value, null);
+  sizeStockData = {};
+  renderSizeStockManager(document.getElementById('pCategory').value);
 });
 
 function editProduct(id) {
@@ -662,15 +820,21 @@ function editProduct(id) {
   document.getElementById('pPrice').value = p.price;
   document.getElementById('pDiscountPct').value = p.discountPct || '';
   document.getElementById('pOriginalPrice').value = p.originalPrice || '';
-  document.getElementById('pStock').value = p.stock;
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
-  document.getElementById('pSizes').value = (p.sizes || []).join(',');
   currentImages = [...(p.images || [])];
   renderImagesGrid();
   selectedColors = (p.colors || []).map(parseColor);
   renderColorPicker();
-  renderSizeGuideEditor(p.category, p.sizeGuideData || null);
+  if (p.sizeStock && Object.keys(p.sizeStock).length) {
+    sizeStockData = { ...p.sizeStock };
+  } else if (p.sizes?.length) {
+    const each = p.stock > 0 ? Math.floor(p.stock / p.sizes.length) : 0;
+    sizeStockData = Object.fromEntries(p.sizes.map(s => [s, each]));
+  } else {
+    sizeStockData = {};
+  }
+  renderSizeStockManager(p.category);
   showView('add');
 }
 
@@ -688,15 +852,21 @@ function fillProductFormFromImport(p) {
   document.getElementById('pPrice').value = p.price || '';
   document.getElementById('pDiscountPct').value = p.discountPct || '';
   document.getElementById('pOriginalPrice').value = p.originalPrice || '';
-  document.getElementById('pStock').value = p.stock !== undefined ? p.stock : '';
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
-  document.getElementById('pSizes').value = (p.sizes || []).join(',');
   currentImages = [...(p.images || [])];
   renderImagesGrid();
   selectedColors = (p.colors || []).map(parseColor);
   renderColorPicker();
-  renderSizeGuideEditor(p.category || 'zapatos', p.sizeGuideData || null);
+  if (p.sizeStock && Object.keys(p.sizeStock).length) {
+    sizeStockData = { ...p.sizeStock };
+  } else if (p.sizes?.length) {
+    const each = p.stock > 0 ? Math.floor(p.stock / p.sizes.length) : 0;
+    sizeStockData = Object.fromEntries(p.sizes.map(s => [s, each]));
+  } else {
+    sizeStockData = {};
+  }
+  renderSizeStockManager(p.category || 'zapatos');
   document.getElementById('formTitle').textContent = 'Completar datos del producto';
   document.getElementById('submitProductBtn').textContent = 'Actualizar Producto';
   showView('add');
@@ -721,12 +891,12 @@ document.getElementById('productForm').addEventListener('submit', async e => {
     price: Number(document.getElementById('pPrice').value),
     discountPct: document.getElementById('pDiscountPct').value ? Number(document.getElementById('pDiscountPct').value) : null,
     originalPrice: document.getElementById('pOriginalPrice').value ? Number(document.getElementById('pOriginalPrice').value) : null,
-    stock: Number(document.getElementById('pStock').value),
+    stock: Object.values(sizeStockData).reduce((a, b) => a + b, 0),
+    sizes: Object.keys(sizeStockData),
+    sizeStock: Object.keys(sizeStockData).length ? { ...sizeStockData } : null,
     tag: document.getElementById('pTag').value.trim() || null,
     bg: document.getElementById('pBg').value.trim() || 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
-    sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
     colors: selectedColors.map(c => `${c.name}|${c.hex}`),
-    sizeGuideData: readSizeGuideData(),
     active: true,
     avgRating: productsCache.find(x => x.id === editId)?.avgRating || 0,
     reviewCount: productsCache.find(x => x.id === editId)?.reviewCount || 0,
@@ -771,6 +941,7 @@ function exportProductsExcel() {
     'Descuento_%': p.discountPct || '',
     'Stock': p.stock,
     'Tallas': (p.sizes || []).join(','),
+    'Stock_Por_Talla': p.sizeStock ? JSON.stringify(p.sizeStock) : '',
     'Colores': (p.colors || []).join(','),
     'Badge': p.tag || '',
     'Fondo_CSS': p.bg || '',
@@ -780,7 +951,6 @@ function exportProductsExcel() {
     'Activo': p.active !== false ? 'Si' : 'No',
     'Imagen_URL': p.imageUrl || '',
     'Imagenes': (p.images || []).join('|'),
-    'Guia_Tallas': p.sizeGuideData ? JSON.stringify(p.sizeGuideData) : '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -813,6 +983,7 @@ async function importProductsExcel(file) {
         discountPct: row['Descuento_%'] ? Number(row['Descuento_%']) : null,
         stock: Number(row['Stock']) || 0,
         sizes: row['Tallas'] ? String(row['Tallas']).split(',').map(s=>s.trim()).filter(Boolean) : [],
+        sizeStock: (() => { try { return row['Stock_Por_Talla'] ? JSON.parse(String(row['Stock_Por_Talla'])) : null; } catch { return null; } })(),
         colors: row['Colores'] ? String(row['Colores']).split(',').map(c => {
           const t = c.trim();
           const parsed = parseColor(t);
@@ -828,7 +999,6 @@ async function importProductsExcel(file) {
         active: String(row['Activo'] || 'Si').trim() !== 'No',
         imageUrl: String(row['Imagen_URL'] || '').trim(),
         images: row['Imagenes'] ? String(row['Imagenes']).split('|').map(s=>s.trim()).filter(Boolean) : [],
-        sizeGuideData: (() => { try { return row['Guia_Tallas'] ? JSON.parse(String(row['Guia_Tallas'])) : null; } catch { return null; } })(),
         avgRating: 0,
         reviewCount: 0,
       }));
@@ -1164,7 +1334,18 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
 });
 
 renderColorPicker();
-renderSizeGuideEditor(document.getElementById('pCategory')?.value || 'zapatos', null);
+renderSizeStockManager(document.getElementById('pCategory')?.value || 'zapatos');
+
+/* ===== GUÍA DE TALLAS — TABS EN CONFIGURACIÓN ===== */
+document.querySelectorAll('#settingsSgTabs .sget-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('#settingsSgTabs .sget-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    renderSettingsSgEditor(tab.dataset.sgType);
+  });
+});
+
+document.getElementById('saveSizeGuideBtn').addEventListener('click', saveGlobalSizeGuides);
 
 /* ===================================================================
    LOGIN / LOGOUT
@@ -1215,7 +1396,7 @@ async function showAdmin() {
 
   try {
     await seedIfEmpty();
-    await Promise.all([refreshProducts(), refreshCategories(), refreshReviews()]);
+    await Promise.all([refreshProducts(), refreshCategories(), refreshReviews(), loadGlobalSizeGuides()]);
   } catch(err) {
     console.error(err);
     toast('Error al conectar con Firebase', 'error');

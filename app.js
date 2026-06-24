@@ -1,6 +1,6 @@
 import { db } from './firebase-config.js';
 import {
-  collection, getDocs, addDoc, query, where
+  collection, getDocs, getDoc, doc, addDoc, query, where
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 /* ===== PRODUCTOS POR DEFECTO ===== */
@@ -32,6 +32,16 @@ const DEFAULT_CATEGORIES = [
   { id:'bolsos', name:'Bolsos', emoji:'👜', bg:'linear-gradient(135deg, #2e1e1e 0%, #44282d 50%, #6d3d3d 100%)', color:'#a855f7', order:1 },
   { id:'accesorios', name:'Accesorios', emoji:'⌚', bg:'linear-gradient(135deg, #1e2e1e 0%, #2d4428 50%, #3d6440 100%)', color:'#16a34a', order:2 },
 ];
+
+/* ===== GUÍAS DE TALLAS GLOBALES ===== */
+let globalSizeGuides = null;
+
+async function loadGlobalSizeGuides() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'sizeGuides'));
+    if (snap.exists()) { globalSizeGuides = snap.data(); }
+  } catch(e) {}
+}
 
 /* ===== CARGAR DESDE FIRESTORE ===== */
 async function loadStoreProducts() {
@@ -592,13 +602,14 @@ function showSizeGuideTable(gender) {
   }
 
   const sgBody = document.getElementById('sgBody');
-  const data = p.sizeGuideData;
   const cat = p.category;
+  const sgType = cat === 'zapatos' ? 'shoes' : cat === 'bolsos' ? 'clothing' : 'accessories';
+  const data = globalSizeGuides ? globalSizeGuides[sgType] : null;
 
   if (data) {
     const gd = data[gender] || data.male;
     if (data.type === 'accessories') {
-      sgBody.innerHTML = `<div class="sg-custom">${data.description || 'Sin información de medidas.'}</div>`;
+      sgBody.innerHTML = `<div class="sg-custom">${data.description || 'Consulta con el vendedor para información sobre medidas.'}</div>`;
     } else if (data.type === 'shoes') {
       sgBody.innerHTML = renderSGTable(gd, productSizes);
     } else {
@@ -608,7 +619,7 @@ function showSizeGuideTable(gender) {
         (measTable ? '<p class="sg-section-title" style="margin-top:24px">Medidas exactas</p>' + measTable : '');
     }
   } else if (cat === 'accesorios') {
-    sgBody.innerHTML = `<div class="sg-custom">${p.sizeGuideText || 'Consulta con el vendedor para información sobre medidas de este accesorio.'}</div>`;
+    sgBody.innerHTML = `<div class="sg-custom">Consulta con el vendedor para información sobre medidas de este accesorio.</div>`;
   } else if (cat === 'zapatos') {
     sgBody.innerHTML = SHOE_GUIDE;
   } else {
@@ -827,7 +838,7 @@ window.scrollTo = function(target) {
 
 /* ===== INIT ===== */
 async function init() {
-  const [allProducts, categories] = await Promise.all([loadStoreProducts(), loadCategories()]);
+  const [allProducts, categories] = await Promise.all([loadStoreProducts(), loadCategories(), loadGlobalSizeGuides()]);
   allProductsCache = allProducts;
   renderDynamicSections(allProducts, categories);
   updateCartUI();

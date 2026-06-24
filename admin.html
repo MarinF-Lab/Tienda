@@ -237,7 +237,7 @@
                 <label class="upload-zone" for="imageFileInput">
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                   <span>Haz clic para subir imagen</span>
-                  <span class="form-hint">JPG, PNG, WEBP — máx. 5 MB por archivo</span>
+                  <span class="form-hint">JPG, PNG, WEBP — sin límite de tamaño</span>
                 </label>
                 <input type="file" id="imageFileInput" accept="image/*" style="display:none" />
               </div>
@@ -257,7 +257,7 @@
 
             <div class="form-section">
               <h4>Precios y Stock</h4>
-              <div class="form-row-4">
+              <div class="form-row-3">
                 <div class="form-group">
                   <label>Precio Actual (CLP) *</label>
                   <div class="input-prefix">
@@ -280,10 +280,6 @@
                     <input type="number" id="pOriginalPrice" placeholder="— sin descuento" min="0" />
                   </div>
                 </div>
-                <div class="form-group">
-                  <label>Stock disponible *</label>
-                  <input type="number" id="pStock" placeholder="50" min="0" required />
-                </div>
               </div>
             </div>
 
@@ -299,22 +295,15 @@
                   <input type="text" id="pBg" placeholder="linear-gradient(135deg,#e8f4ff,#c7e0ff)" />
                 </div>
               </div>
-              <div class="form-row-2">
-                <div class="form-group">
-                  <label>Tallas disponibles</label>
-                  <input type="text" id="pSizes" placeholder="38,39,40,41,42 o S,M,L,XL o Único" />
-                  <span class="form-hint">Separadas por coma</span>
-                </div>
-                <div class="form-group">
-                  <label>Colores disponibles</label>
-                  <div id="colorPresetsRow" class="color-presets-row"></div>
-                  <div id="selectedColorsList" class="selected-colors-list"></div>
-                  <span class="form-hint">Haz clic en un color para agregarlo o quitarlo</span>
-                </div>
+              <div class="form-group">
+                <label>Tallas y stock por talla</label>
+                <div id="sizeStockManager"></div>
               </div>
               <div class="form-group">
-                <label>Guía de Tallas</label>
-                <div id="sgEditorRoot" class="sg-editor-root"></div>
+                <label>Colores disponibles</label>
+                <div id="colorPresetsRow" class="color-presets-row"></div>
+                <div id="selectedColorsList" class="selected-colors-list"></div>
+                <span class="form-hint">Haz clic en un color para agregarlo o quitarlo</span>
               </div>
             </div>
 
@@ -460,6 +449,25 @@
                 <p class="form-hint" style="margin-bottom:10px">Restaurar productos a los valores por defecto. Esta acción no se puede deshacer.</p>
                 <button class="btn-admin" style="background:#fef2f2;color:#ef4444;border:1.5px solid #fecaca" id="resetProductsBtn">Restaurar Productos por Defecto</button>
               </div>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column: 1 / -1">
+            <div class="panel__header">
+              <h3>Guías de Tallas</h3>
+              <button class="btn-admin btn-admin--primary" id="saveSizeGuideBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Guardar Guía
+              </button>
+            </div>
+            <div class="settings-form">
+              <p class="form-hint" style="margin-bottom:16px">La guía aplica a todos los productos de la categoría y se muestra en la tienda pública.</p>
+              <div class="sget-tabs" id="settingsSgTabs">
+                <button type="button" class="sget-tab active" data-sg-type="shoes">Zapatos</button>
+                <button type="button" class="sget-tab" data-sg-type="clothing">Bolsos / Ropa</button>
+                <button type="button" class="sget-tab" data-sg-type="accessories">Accesorios</button>
+              </div>
+              <div id="settingsSgEditorRoot" class="sg-editor-root" style="margin-top:16px"></div>
             </div>
           </div>
         </div>

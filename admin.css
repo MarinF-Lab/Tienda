@@ -240,6 +240,31 @@ input, select, button, textarea { font-family: inherit; }
 .settings-form { padding: 20px; }
 .settings-form .form-group { margin-bottom: 16px; }
 
+/* ===== SELECTOR DE TALLAS Y STOCK ===== */
+#sizeStockManager { border: 1px solid var(--gray-200); border-radius: var(--radius); padding: 12px; background: var(--gray-50); }
+.ss-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.ss-preset-btn { padding: 5px 10px; border: 1.5px solid var(--gray-200); border-radius: 20px; background: var(--white); font-size: 12px; font-weight: 600; cursor: pointer; transition: .15s; color: var(--gray-600); }
+.ss-preset-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ss-preset-btn.active { background: var(--accent); color: var(--white); border-color: var(--accent); }
+.ss-custom-row { display: flex; gap: 8px; margin-bottom: 10px; }
+.ss-custom-input { flex: 1; padding: 7px 10px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 13px; background: var(--white); }
+.ss-add-btn { padding: 7px 14px !important; font-size: 12px !important; white-space: nowrap; }
+.ss-empty { font-size: 12px; color: var(--gray-400); text-align: center; padding: 12px 0; }
+.ss-list-header { display: grid; grid-template-columns: 1fr 1fr; padding: 6px 10px; font-size: 11px; font-weight: 700; color: var(--gray-400); text-transform: uppercase; letter-spacing: .05em; border-bottom: 1px solid var(--gray-200); }
+.ss-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--gray-100); }
+.ss-size-name { font-weight: 700; font-size: 13px; min-width: 52px; }
+.ss-qty-wrap { display: flex; align-items: center; gap: 4px; flex: 1; }
+.ss-qty-btn { width: 24px; height: 24px; border: 1.5px solid var(--gray-200); border-radius: 6px; background: var(--white); cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; line-height: 1; font-weight: 700; color: var(--gray-600); transition: .15s; }
+.ss-qty-btn:hover { border-color: var(--accent); color: var(--accent); }
+.ss-qty-input { width: 56px; padding: 4px 6px; border: 1.5px solid var(--gray-200); border-radius: 6px; font-size: 13px; font-weight: 600; text-align: center; }
+.ss-remove { width: 22px; height: 22px; border: none; background: none; cursor: pointer; color: var(--gray-400); font-size: 16px; border-radius: 4px; display: flex; align-items: center; justify-content: center; transition: .15s; }
+.ss-remove:hover { background: var(--red-light); color: var(--red); }
+.ss-total { padding: 8px 0 4px; font-size: 12px; color: var(--gray-600); text-align: right; }
+.ss-stock-cell { display: flex; flex-direction: column; gap: 4px; }
+.ss-badges-wrap { display: flex; flex-wrap: wrap; gap: 3px; }
+.ss-badge { display: inline-block; padding: 1px 5px; border-radius: 4px; font-size: 10px; font-weight: 700; background: var(--accent-light); color: var(--accent); border: 1px solid #c7d2fe; }
+.ss-badge--zero { background: #f1f5f9; color: var(--gray-400); border-color: var(--gray-200); }
+
 /* ===== CONFIRM MODAL ===== */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 500; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
 .confirm-box { background: var(--white); border-radius: 12px; padding: 28px; max-width: 400px; width: 90%; box-shadow: var(--shadow-md); }
@@ -275,4 +300,24 @@ input, select, button, textarea { font-family: inherit; }
   .stats-grid { grid-template-columns: 1fr 1fr; }
   .form-row-2, .form-row-3, .form-row-4 { grid-template-columns: 1fr; }
   .view { padding: 20px 16px; }
+}
+@media (max-width: 380px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .topbar { padding: 0 10px; gap: 8px; }
+  .topbar__title { font-size: 15px; }
+  .panel { border-radius: 8px; }
+  .panel__header { padding: 14px 14px; flex-wrap: wrap; gap: 8px; }
+  .panel__header h3 { font-size: 14px; }
+  .form-section { padding: 14px; }
+  .view { padding: 14px 10px; }
+  .table-wrap { overflow-x: auto; }
+  .products-table th, .products-table td { padding: 8px 6px; font-size: 11px; }
+  .login-box { padding: 28px 20px; }
+  .confirm-box { padding: 20px 16px; width: 96%; }
+  .import-preview-box { padding: 16px; }
+  .ss-list-header, .ss-row { font-size: 11px; }
+  .ss-qty-input { width: 44px; }
+  .sget-table th, .sget-table td { padding: 4px 3px; font-size: 11px; }
+  .sget-table-wrap { overflow-x: auto; }
+  .settings-grid { gap: 12px; }
 }

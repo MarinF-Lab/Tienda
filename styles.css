@@ -806,3 +806,34 @@ img { display: block; max-width: 100%; }
   .pdp-name { font-size: 22px; }
   .review-form-row { grid-template-columns: 1fr; }
 }
+@media (max-width: 380px) {
+  .container { padding: 0 14px; }
+  .nav { padding: 14px; }
+  .nav__logo { font-size: 18px; }
+  .hero { padding: 40px 14px 28px; }
+  .hero__title { font-size: 32px; }
+  .hero__sub { font-size: 14px; }
+  .btn { padding: 11px 22px; font-size: 13px; }
+  .products-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+  .product-card { border-radius: 10px; }
+  .product-card__body { padding: 10px; }
+  .product-card__name { font-size: 12px; }
+  .product-card__price { font-size: 14px; }
+  .section-title { font-size: 22px; }
+  .pdp-modal { width: 98vw; border-radius: 12px; padding: 0; }
+  .pdp-info { padding: 14px; }
+  .pdp-name { font-size: 18px; }
+  .pdp-price { font-size: 22px; }
+  .pdp-size-btn { padding: 6px 10px; font-size: 12px; }
+  .pdp-color-dot { width: 26px; height: 26px; }
+  .pdp-add-btn { padding: 13px 20px; font-size: 14px; }
+  .sg-modal { border-radius: 12px 12px 0 0; padding: 16px; }
+  .sg-table th, .sg-table td { padding: 6px 4px; font-size: 11px; }
+  .cart-drawer { padding: 16px 14px; }
+  .trust__grid { grid-template-columns: 1fr; gap: 20px; }
+  .footer { padding: 40px 0 20px; }
+  .footer__grid { gap: 18px; }
+  .review-card { padding: 14px; }
+  .categories__grid { gap: 10px; }
+  .category-card { border-radius: 14px; min-height: 100px; }
+}
