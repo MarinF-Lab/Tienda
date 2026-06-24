@@ -33,9 +33,15 @@
   <!-- ===== ADMIN APP ===== -->
   <div id="adminApp" style="display:none">
 
+    <!-- Sidebar overlay for mobile -->
+    <div class="sidebar-overlay" id="sidebarOverlay"></div>
+
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebar__logo">STRIDE <span>Admin</span></div>
+      <div class="sidebar__logo">
+        STRIDE <span>Admin</span>
+        <button class="sidebar__close" id="sidebarClose" aria-label="Cerrar menú">✕</button>
+      </div>
       <nav class="sidebar__nav">
         <button class="nav-item active" data-view="dashboard">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
@@ -77,6 +83,9 @@
     <!-- Main Content -->
     <main class="admin-main">
       <header class="topbar">
+        <button class="topbar__hamburger" id="menuToggle" aria-label="Menú">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
         <h1 class="topbar__title" id="pageTitle">Dashboard</h1>
         <div class="topbar__right">
           <span class="topbar__date" id="topbarDate"></span>
@@ -448,6 +457,96 @@
                 <label style="color:#ef4444">Zona de Peligro</label>
                 <p class="form-hint" style="margin-bottom:10px">Restaurar productos a los valores por defecto. Esta acción no se puede deshacer.</p>
                 <button class="btn-admin" style="background:#fef2f2;color:#ef4444;border:1.5px solid #fecaca" id="resetProductsBtn">Restaurar Productos por Defecto</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column: 1 / -1">
+            <div class="panel__header">
+              <h3>Datos de la Tienda</h3>
+              <button class="btn-admin btn-admin--primary" id="saveStoreInfoBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Guardar
+              </button>
+            </div>
+            <div class="settings-form">
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Nombre de la tienda</label>
+                  <input type="text" id="siName" placeholder="STRIDE" />
+                </div>
+                <div class="form-group">
+                  <label>Eslogan</label>
+                  <input type="text" id="siSlogan" placeholder="Tu estilo, tu identidad." />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Descripción / Presentación</label>
+                <textarea id="siDescription" rows="3" class="sget-desc" placeholder="Breve descripción de tu tienda que aparece en el footer..."></textarea>
+              </div>
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label>Email de contacto</label>
+                  <input type="email" id="siEmail" placeholder="hola@tienda.cl" />
+                </div>
+                <div class="form-group">
+                  <label>Teléfono</label>
+                  <input type="text" id="siPhone" placeholder="+56 9 1234 5678" />
+                </div>
+                <div class="form-group">
+                  <label>WhatsApp (solo números)</label>
+                  <input type="text" id="siWhatsapp" placeholder="56912345678" />
+                  <span class="form-hint">Ej: 56912345678 — activa botón flotante en la tienda</span>
+                </div>
+              </div>
+              <div class="form-row-2">
+                <div class="form-group">
+                  <label>Dirección</label>
+                  <input type="text" id="siAddress" placeholder="Santiago, Chile" />
+                </div>
+                <div class="form-group">
+                  <label>Horario de atención</label>
+                  <input type="text" id="siHours" placeholder="Lun–Vie 9–18 hrs" />
+                </div>
+              </div>
+              <div class="form-row-3">
+                <div class="form-group">
+                  <label>Instagram (usuario)</label>
+                  <input type="text" id="siInstagram" placeholder="@tienda" />
+                </div>
+                <div class="form-group">
+                  <label>Facebook (usuario o URL)</label>
+                  <input type="text" id="siFacebook" placeholder="tienda" />
+                </div>
+                <div class="form-group">
+                  <label>TikTok (usuario)</label>
+                  <input type="text" id="siTiktok" placeholder="@tienda" />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel" style="grid-column: 1 / -1">
+            <div class="panel__header">
+              <h3>Políticas de la Tienda</h3>
+              <button class="btn-admin btn-admin--primary" id="saveStorePoliciesBtn">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Guardar
+              </button>
+            </div>
+            <div class="settings-form">
+              <p class="form-hint" style="margin-bottom:16px">Los textos aparecen en la tienda cuando el cliente hace clic en los enlaces del footer.</p>
+              <div class="form-group">
+                <label>Política de Devolución</label>
+                <textarea id="siPolicyReturn" rows="5" class="sget-desc" placeholder="Describe tu política de devoluciones..."></textarea>
+              </div>
+              <div class="form-group" style="margin-top:16px">
+                <label>Política de Privacidad</label>
+                <textarea id="siPolicyPrivacy" rows="5" class="sget-desc" placeholder="Describe tu política de privacidad..."></textarea>
+              </div>
+              <div class="form-group" style="margin-top:16px">
+                <label>Política de Envíos</label>
+                <textarea id="siPolicyShipping" rows="5" class="sget-desc" placeholder="Describe tu política de envíos y despachos..."></textarea>
               </div>
             </div>
           </div>

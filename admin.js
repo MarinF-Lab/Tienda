@@ -307,7 +307,7 @@ function showView(name) {
   if (name === 'products') renderProductsTable();
   if (name === 'categories') renderCategoriesView();
   if (name === 'reviews') renderReviewsView();
-  if (name === 'settings') renderSettingsSgEditor(settingsSgCurrentType);
+  if (name === 'settings') { renderSettingsSgEditor(settingsSgCurrentType); populateStoreInfoForm(); }
   if (name === 'add') {
     const editId = document.getElementById('editProductId').value;
     document.getElementById('formTitle').textContent = editId ? 'Editar Producto' : 'Agregar Producto';
@@ -576,6 +576,75 @@ function renderSettingsSgEditor(type) {
   const data = settingsSgBuffer[settingsSgCurrentType]
     || (globalSizeGuides ? globalSizeGuides[settingsSgCurrentType] : null);
   renderSizeGuideIntoRoot(rootEl, settingsSgCurrentType, data);
+}
+
+/* ===================================================================
+   DATOS DE LA TIENDA
+   =================================================================== */
+let storeInfo = {};
+
+async function loadStoreInfo() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'storeInfo'));
+    if (snap.exists()) storeInfo = snap.data();
+  } catch(e) { console.warn('No se pudo cargar la info de la tienda', e); }
+}
+
+function populateStoreInfoForm() {
+  const fields = ['siName','siSlogan','siDescription','siEmail','siPhone','siWhatsapp',
+                  'siAddress','siHours','siInstagram','siFacebook','siTiktok',
+                  'siPolicyReturn','siPolicyPrivacy','siPolicyShipping'];
+  const map = {
+    siName: 'name', siSlogan: 'slogan', siDescription: 'description',
+    siEmail: 'email', siPhone: 'phone', siWhatsapp: 'whatsapp',
+    siAddress: 'address', siHours: 'hours',
+    siInstagram: 'instagram', siFacebook: 'facebook', siTiktok: 'tiktok',
+    siPolicyReturn: 'policyReturn', siPolicyPrivacy: 'policyPrivacy', siPolicyShipping: 'policyShipping',
+  };
+  fields.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = storeInfo[map[id]] || '';
+  });
+}
+
+async function saveStoreInfo() {
+  const data = {
+    ...storeInfo,
+    name:        document.getElementById('siName')?.value.trim() || '',
+    slogan:      document.getElementById('siSlogan')?.value.trim() || '',
+    description: document.getElementById('siDescription')?.value.trim() || '',
+    email:       document.getElementById('siEmail')?.value.trim() || '',
+    phone:       document.getElementById('siPhone')?.value.trim() || '',
+    whatsapp:    document.getElementById('siWhatsapp')?.value.trim() || '',
+    address:     document.getElementById('siAddress')?.value.trim() || '',
+    hours:       document.getElementById('siHours')?.value.trim() || '',
+    instagram:   document.getElementById('siInstagram')?.value.trim() || '',
+    facebook:    document.getElementById('siFacebook')?.value.trim() || '',
+    tiktok:      document.getElementById('siTiktok')?.value.trim() || '',
+  };
+  try {
+    await setDoc(doc(db, 'settings', 'storeInfo'), data, { merge: true });
+    storeInfo = { ...storeInfo, ...data };
+    toast('Datos de la tienda guardados ✓', 'success');
+  } catch(e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  }
+}
+
+async function saveStorePolicies() {
+  const data = {
+    ...storeInfo,
+    policyReturn:   document.getElementById('siPolicyReturn')?.value.trim() || '',
+    policyPrivacy:  document.getElementById('siPolicyPrivacy')?.value.trim() || '',
+    policyShipping: document.getElementById('siPolicyShipping')?.value.trim() || '',
+  };
+  try {
+    await setDoc(doc(db, 'settings', 'storeInfo'), data, { merge: true });
+    storeInfo = { ...storeInfo, ...data };
+    toast('Políticas guardadas ✓', 'success');
+  } catch(e) {
+    toast('Error al guardar: ' + e.message, 'error');
+  }
 }
 
 /* ===================================================================
@@ -1346,6 +1415,8 @@ document.querySelectorAll('#settingsSgTabs .sget-tab').forEach(tab => {
 });
 
 document.getElementById('saveSizeGuideBtn').addEventListener('click', saveGlobalSizeGuides);
+document.getElementById('saveStoreInfoBtn').addEventListener('click', saveStoreInfo);
+document.getElementById('saveStorePoliciesBtn').addEventListener('click', saveStorePolicies);
 
 /* ===================================================================
    LOGIN / LOGOUT
@@ -1377,11 +1448,26 @@ document.getElementById('togglePwd').addEventListener('click', () => {
   input.type = input.type === 'password' ? 'text' : 'password';
 });
 
+/* ===== MOBILE MENU ===== */
+function closeMobileMenu() {
+  document.querySelector('.sidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('active');
+  document.body.style.overflow = '';
+}
+document.getElementById('menuToggle').addEventListener('click', () => {
+  document.querySelector('.sidebar').classList.add('open');
+  document.getElementById('sidebarOverlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+});
+document.getElementById('sidebarOverlay').addEventListener('click', closeMobileMenu);
+document.getElementById('sidebarClose').addEventListener('click', closeMobileMenu);
+
 /* ===== SIDEBAR ===== */
 document.querySelectorAll('.nav-item').forEach(btn => {
   btn.addEventListener('click', () => {
     if (btn.dataset.view === 'add') clearForm();
     showView(btn.dataset.view);
+    if (window.innerWidth <= 768) closeMobileMenu();
   });
 });
 
@@ -1396,7 +1482,7 @@ async function showAdmin() {
 
   try {
     await seedIfEmpty();
-    await Promise.all([refreshProducts(), refreshCategories(), refreshReviews(), loadGlobalSizeGuides()]);
+    await Promise.all([refreshProducts(), refreshCategories(), refreshReviews(), loadGlobalSizeGuides(), loadStoreInfo()]);
   } catch(err) {
     console.error(err);
     toast('Error al conectar con Firebase', 'error');

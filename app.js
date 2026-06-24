@@ -35,6 +35,7 @@ const DEFAULT_CATEGORIES = [
 
 /* ===== GUÍAS DE TALLAS GLOBALES ===== */
 let globalSizeGuides = null;
+let storeInfo = {};
 
 async function loadGlobalSizeGuides() {
   try {
@@ -42,6 +43,82 @@ async function loadGlobalSizeGuides() {
     if (snap.exists()) { globalSizeGuides = snap.data(); }
   } catch(e) {}
 }
+
+async function loadStoreInfo() {
+  try {
+    const snap = await getDoc(doc(db, 'settings', 'storeInfo'));
+    if (snap.exists()) storeInfo = snap.data();
+  } catch(e) {}
+  applyStoreInfo();
+}
+
+function applyStoreInfo() {
+  const si = storeInfo;
+  const year = new Date().getFullYear();
+  const name = si.name || 'STRIDE';
+
+  const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
+  set('navLogo', name);
+  set('footerLogo', name);
+  set('footerDesc', si.description || si.slogan || '');
+  set('footerCopyright', `© ${year} ${name}. Todos los derechos reservados.`);
+
+  const contactEl = document.getElementById('footerContact');
+  if (contactEl) {
+    const lines = [];
+    if (si.email)   lines.push(`<li>📧 <a href="mailto:${si.email}">${si.email}</a></li>`);
+    if (si.phone)   lines.push(`<li>📞 ${si.phone}</li>`);
+    if (si.address) lines.push(`<li>📍 ${si.address}</li>`);
+    if (si.hours)   lines.push(`<li>🕐 ${si.hours}</li>`);
+    if (lines.length) contactEl.innerHTML = lines.join('');
+  }
+
+  const socialEl = document.getElementById('footerSocial');
+  if (socialEl) {
+    const links = [];
+    if (si.instagram) links.push(`<a href="https://instagram.com/${si.instagram.replace('@','')}" target="_blank" rel="noopener" title="Instagram">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/></svg></a>`);
+    if (si.facebook) links.push(`<a href="https://facebook.com/${si.facebook.replace('@','')}" target="_blank" rel="noopener" title="Facebook">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>`);
+    if (si.tiktok) links.push(`<a href="https://tiktok.com/${si.tiktok.replace('@','')}" target="_blank" rel="noopener" title="TikTok">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M19.59 6.69a4.83 4.83 0 01-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 01-2.88 2.5 2.89 2.89 0 01-2.89-2.89 2.89 2.89 0 012.89-2.89c.28 0 .54.04.79.1V9.01a6.32 6.32 0 00-.79-.05 6.34 6.34 0 00-6.34 6.34 6.34 6.34 0 006.34 6.34 6.34 6.34 0 006.33-6.34V8.89a8.18 8.18 0 004.79 1.54V7a4.85 4.85 0 01-1.02-.31z"/></svg></a>`);
+    socialEl.innerHTML = links.join('');
+  }
+
+  const waFloat = document.getElementById('whatsappFloat');
+  if (waFloat) {
+    if (si.whatsapp) {
+      waFloat.href = `https://wa.me/${si.whatsapp.replace(/\D/g,'')}`;
+      waFloat.style.display = 'flex';
+    } else {
+      waFloat.style.display = 'none';
+    }
+  }
+
+  const setupPolicy = (linkId, title, content) => {
+    const link = document.getElementById(linkId);
+    if (!link) return;
+    if (content) {
+      link.addEventListener('click', e => { e.preventDefault(); openPolicyModal(title, content); });
+      link.style.cursor = 'pointer';
+    }
+  };
+  setupPolicy('policyReturnLink',   'Política de Devolución', si.policyReturn);
+  setupPolicy('policyPrivacyLink',  'Política de Privacidad', si.policyPrivacy);
+  setupPolicy('policyShippingLink', 'Política de Envíos',     si.policyShipping);
+}
+
+function openPolicyModal(title, text) {
+  document.getElementById('policyModalTitle').textContent = title;
+  document.getElementById('policyModalBody').innerHTML = text.replace(/\n/g, '<br>');
+  document.getElementById('policyOverlay').style.display = 'flex';
+}
+document.getElementById('policyModalClose')?.addEventListener('click', () => {
+  document.getElementById('policyOverlay').style.display = 'none';
+});
+document.getElementById('policyOverlay')?.addEventListener('click', e => {
+  if (e.target === e.currentTarget) e.currentTarget.style.display = 'none';
+});
 
 /* ===== CARGAR DESDE FIRESTORE ===== */
 async function loadStoreProducts() {
@@ -838,7 +915,7 @@ window.scrollTo = function(target) {
 
 /* ===== INIT ===== */
 async function init() {
-  const [allProducts, categories] = await Promise.all([loadStoreProducts(), loadCategories(), loadGlobalSizeGuides()]);
+  const [allProducts, categories] = await Promise.all([loadStoreProducts(), loadCategories(), loadGlobalSizeGuides(), loadStoreInfo()]);
   allProductsCache = allProducts;
   renderDynamicSections(allProducts, categories);
   updateCartUI();
