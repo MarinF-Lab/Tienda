@@ -460,6 +460,176 @@ function renderColorPicker() {
 }
 
 /* ===================================================================
+   EDITOR DE GUÍA DE TALLAS
+   =================================================================== */
+const mkTable = (headers, rows) => ({ headers, rows });
+const mkRows = (n, cols) => Array.from({length: n}, () => Array(cols).fill(''));
+
+const DEFAULT_SG = {
+  shoes:      () => ({ type:'shoes',    male:{ headers:['Chile','EUR','USA'], rows:mkRows(10,3) }, female:{ headers:['Chile','EUR','USA'], rows:mkRows(10,3) } }),
+  clothing:   () => ({ type:'clothing', male:{ sizes:mkTable(['Chile','EUR','USA'],mkRows(10,3)), measurements:mkTable(['Talla','Ancho (cm)','Alto (cm)'],mkRows(10,3)) }, female:{ sizes:mkTable(['Chile','EUR','USA'],mkRows(10,3)), measurements:mkTable(['Talla','Ancho (cm)','Alto (cm)'],mkRows(10,3)) } }),
+  accessories:() => ({ type:'accessories', description:'' }),
+};
+
+function sgType(category) {
+  return category === 'zapatos' ? 'shoes' : category === 'bolsos' ? 'clothing' : 'accessories';
+}
+
+function buildEditableTable(tableData, tableId) {
+  const {headers, rows} = tableData;
+  const hCells = headers.map((h,ci) => `
+    <th>
+      <div class="sget-th-wrap">
+        <input type="text" class="sget-th" value="${h}" />
+        ${ci >= 3 ? `<button type="button" class="sget-del-col icon-btn" data-ci="${ci}" title="Quitar">×</button>` : ''}
+      </div>
+    </th>`).join('') + `<th class="sget-add-col-th"><button type="button" class="sget-add-col icon-btn" title="Agregar columna">+</button></th>`;
+
+  const rCells = rows.map(row => `
+    <tr>
+      ${row.map(c=>`<td><input type="text" class="sget-cell" value="${c}" /></td>`).join('')}
+      <td class="sget-del-td"><button type="button" class="sget-del-row icon-btn" title="Quitar fila">×</button></td>
+    </tr>`).join('');
+
+  return `<div class="sget-table-wrap" id="${tableId}">
+    <table class="sget-table">
+      <thead><tr>${hCells}</tr></thead>
+      <tbody>${rCells}</tbody>
+    </table>
+    <button type="button" class="sget-add-row btn-admin btn-admin--outline">+ Agregar fila</button>
+  </div>`;
+}
+
+function wireTable(root, tableId) {
+  const wrap = root.querySelector(`#${tableId}`);
+  if (!wrap) return;
+  const table = wrap.querySelector('table');
+
+  // Add row
+  wrap.querySelector('.sget-add-row').addEventListener('click', () => {
+    const numCols = table.querySelector('thead tr th:not(.sget-add-col-th)').closest('tr').querySelectorAll('th:not(.sget-add-col-th)').length;
+    const tr = document.createElement('tr');
+    tr.innerHTML = Array(numCols).fill(0).map(()=>`<td><input type="text" class="sget-cell" /></td>`).join('') +
+      `<td class="sget-del-td"><button type="button" class="sget-del-row icon-btn" title="Quitar fila">×</button></td>`;
+    table.querySelector('tbody').appendChild(tr);
+    tr.querySelector('.sget-del-row').addEventListener('click', () => tr.remove());
+  });
+
+  // Existing del-row
+  wrap.querySelectorAll('.sget-del-row').forEach(btn => btn.addEventListener('click', () => btn.closest('tr').remove()));
+
+  // Del col
+  wrap.querySelectorAll('.sget-del-col').forEach(btn => btn.addEventListener('click', () => {
+    const ci = +btn.dataset.ci;
+    table.querySelectorAll('thead tr th').forEach((th,i) => { if(i===ci) th.remove(); });
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      const cells = tr.querySelectorAll('td:not(.sget-del-td)');
+      if (cells[ci]) cells[ci].remove();
+    });
+  }));
+
+  // Add col
+  wrap.querySelector('.sget-add-col').addEventListener('click', () => {
+    const addTh = table.querySelector('.sget-add-col-th');
+    const newTh = document.createElement('th');
+    const ci = table.querySelectorAll('thead th:not(.sget-add-col-th)').length;
+    newTh.innerHTML = `<div class="sget-th-wrap"><input type="text" class="sget-th" value="Columna" /><button type="button" class="sget-del-col icon-btn" data-ci="${ci}" title="Quitar">×</button></div>`;
+    addTh.parentNode.insertBefore(newTh, addTh);
+    newTh.querySelector('.sget-del-col').addEventListener('click', () => {
+      const idx = Array.from(table.querySelectorAll('thead th')).indexOf(newTh);
+      newTh.remove();
+      table.querySelectorAll('tbody tr').forEach(tr => {
+        const cells = tr.querySelectorAll('td:not(.sget-del-td)');
+        if (cells[idx]) cells[idx].remove();
+      });
+    });
+    table.querySelectorAll('tbody tr').forEach(tr => {
+      const delTd = tr.querySelector('.sget-del-td');
+      const newTd = document.createElement('td');
+      newTd.innerHTML = `<input type="text" class="sget-cell" />`;
+      tr.insertBefore(newTd, delTd);
+    });
+  });
+}
+
+function renderSizeGuideEditor(category, data) {
+  const root = document.getElementById('sgEditorRoot');
+  if (!root) return;
+  const type = sgType(category);
+  const d = data?.type === type ? data : DEFAULT_SG[type]();
+
+  if (type === 'accessories') {
+    root.innerHTML = `<textarea id="sgAccessoriesDesc" class="sget-desc" rows="4" placeholder="Ej: Talla única. Ajustable de 80–120 cm. Largo: 25 cm.">${d.description||''}</textarea>`;
+    return;
+  }
+
+  const paneHtml = (gender) => {
+    const gd = d[gender];
+    let html = `<div class="sget-pane" data-gender="${gender}" ${gender==='female'?'style="display:none"':''}>`;
+    html += `<p class="sget-sublabel">Tabla de tallas</p>`;
+    html += buildEditableTable(type==='shoes' ? gd : (gd.sizes||gd), `sgt-${gender}-sizes`);
+    if (type === 'clothing') {
+      html += `<p class="sget-sublabel" style="margin-top:18px">Medidas exactas (cm)</p>`;
+      html += buildEditableTable(gd.measurements||mkTable(['Talla','Ancho (cm)','Alto (cm)'],mkRows(10,3)), `sgt-${gender}-meas`);
+    }
+    html += '</div>';
+    return html;
+  };
+
+  root.innerHTML = `
+    <div class="sget-tabs">
+      <button type="button" class="sget-tab active" data-g="male">Masculino / Unisex</button>
+      <button type="button" class="sget-tab" data-g="female">Femenino</button>
+    </div>
+    ${paneHtml('male')}${paneHtml('female')}`;
+
+  root.querySelectorAll('.sget-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+      root.querySelectorAll('.sget-tab').forEach(t => t.classList.remove('active'));
+      tab.classList.add('active');
+      root.querySelectorAll('.sget-pane').forEach(p => { p.style.display = p.dataset.gender === tab.dataset.g ? '' : 'none'; });
+    });
+  });
+
+  wireTable(root, 'sgt-male-sizes');
+  wireTable(root, 'sgt-female-sizes');
+  if (type === 'clothing') { wireTable(root, 'sgt-male-meas'); wireTable(root, 'sgt-female-meas'); }
+}
+
+function readSizeGuideData() {
+  const root = document.getElementById('sgEditorRoot');
+  if (!root) return null;
+  const descEl = document.getElementById('sgAccessoriesDesc');
+  if (descEl) return { type:'accessories', description: descEl.value.trim() };
+
+  const cat = document.getElementById('pCategory').value;
+  const type = sgType(cat);
+
+  const readTable = (id) => {
+    const wrap = document.getElementById(id);
+    if (!wrap) return null;
+    const headers = Array.from(wrap.querySelectorAll('thead .sget-th')).map(i => i.value.trim());
+    const rows = Array.from(wrap.querySelectorAll('tbody tr')).map(tr =>
+      Array.from(tr.querySelectorAll('.sget-cell')).map(i => i.value.trim())
+    );
+    return { headers, rows };
+  };
+
+  const result = { type };
+  ['male','female'].forEach(g => {
+    if (type === 'shoes') {
+      result[g] = readTable(`sgt-${g}-sizes`) || { headers:[], rows:[] };
+    } else {
+      result[g] = {
+        sizes: readTable(`sgt-${g}-sizes`) || { headers:[], rows:[] },
+        measurements: readTable(`sgt-${g}-meas`) || { headers:[], rows:[] },
+      };
+    }
+  });
+  return result;
+}
+
+/* ===================================================================
    FORMULARIO AGREGAR / EDITAR
    =================================================================== */
 function clearForm() {
@@ -469,7 +639,13 @@ function clearForm() {
   renderImagesGrid();
   selectedColors = [];
   renderColorPicker();
+  renderSizeGuideEditor(document.getElementById('pCategory').value || 'zapatos', null);
 }
+
+/* Re-render size guide editor when category changes */
+document.getElementById('pCategory').addEventListener('change', () => {
+  renderSizeGuideEditor(document.getElementById('pCategory').value, null);
+});
 
 function editProduct(id) {
   const p = productsCache.find(x => x.id === id);
@@ -490,11 +666,11 @@ function editProduct(id) {
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
   document.getElementById('pSizes').value = (p.sizes || []).join(',');
-  document.getElementById('pSizeGuideText').value = p.sizeGuideText || '';
   currentImages = [...(p.images || [])];
   renderImagesGrid();
   selectedColors = (p.colors || []).map(parseColor);
   renderColorPicker();
+  renderSizeGuideEditor(p.category, p.sizeGuideData || null);
   showView('add');
 }
 
@@ -516,11 +692,11 @@ function fillProductFormFromImport(p) {
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
   document.getElementById('pSizes').value = (p.sizes || []).join(',');
-  document.getElementById('pSizeGuideText').value = p.sizeGuideText || '';
   currentImages = [...(p.images || [])];
   renderImagesGrid();
   selectedColors = (p.colors || []).map(parseColor);
   renderColorPicker();
+  renderSizeGuideEditor(p.category || 'zapatos', p.sizeGuideData || null);
   document.getElementById('formTitle').textContent = 'Completar datos del producto';
   document.getElementById('submitProductBtn').textContent = 'Actualizar Producto';
   showView('add');
@@ -550,7 +726,7 @@ document.getElementById('productForm').addEventListener('submit', async e => {
     bg: document.getElementById('pBg').value.trim() || 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
     sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
     colors: selectedColors.map(c => `${c.name}|${c.hex}`),
-    sizeGuideText: document.getElementById('pSizeGuideText').value.trim() || null,
+    sizeGuideData: readSizeGuideData(),
     active: true,
     avgRating: productsCache.find(x => x.id === editId)?.avgRating || 0,
     reviewCount: productsCache.find(x => x.id === editId)?.reviewCount || 0,
@@ -604,7 +780,7 @@ function exportProductsExcel() {
     'Activo': p.active !== false ? 'Si' : 'No',
     'Imagen_URL': p.imageUrl || '',
     'Imagenes': (p.images || []).join('|'),
-    'Guia_Tallas': p.sizeGuideText || '',
+    'Guia_Tallas': p.sizeGuideData ? JSON.stringify(p.sizeGuideData) : '',
   }));
 
   const ws = XLSX.utils.json_to_sheet(rows);
@@ -652,7 +828,7 @@ async function importProductsExcel(file) {
         active: String(row['Activo'] || 'Si').trim() !== 'No',
         imageUrl: String(row['Imagen_URL'] || '').trim(),
         images: row['Imagenes'] ? String(row['Imagenes']).split('|').map(s=>s.trim()).filter(Boolean) : [],
-        sizeGuideText: String(row['Guia_Tallas'] || '').trim() || null,
+        sizeGuideData: (() => { try { return row['Guia_Tallas'] ? JSON.parse(String(row['Guia_Tallas'])) : null; } catch { return null; } })(),
         avgRating: 0,
         reviewCount: 0,
       }));
@@ -988,6 +1164,7 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
 });
 
 renderColorPicker();
+renderSizeGuideEditor(document.getElementById('pCategory')?.value || 'zapatos', null);
 
 /* ===================================================================
    LOGIN / LOGOUT

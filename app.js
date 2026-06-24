@@ -524,25 +524,110 @@ const CLOTHING_GUIDE = `
 <p class="sg-note">Chile usa talla europea (número par). Medidas aproximadas; mide sobre ropa interior para mayor precisión.</p>
 `;
 
-document.getElementById('openSizeGuide').addEventListener('click', () => {
-  const cat = currentPDPProduct?.category || '';
-  const custom = currentPDPProduct?.sizeGuideText;
-  const sgBody = document.getElementById('sgBody');
+function openSizeGuideOverlay() {
+  const overlay = document.getElementById('sgOverlay');
+  overlay.style.display = 'flex';
+  overlay.classList.add('open');
+  overlay.setAttribute('aria-hidden', 'false');
+  if (window.innerWidth >= 1024) overlay.classList.add('sg-side');
+  else overlay.classList.remove('sg-side');
+}
 
-  if (custom) {
-    sgBody.innerHTML = `<div class="sg-custom">${custom}</div>`;
+function closeSizeGuide() {
+  const overlay = document.getElementById('sgOverlay');
+  overlay.style.display = 'none';
+  overlay.classList.remove('open', 'sg-side');
+  overlay.setAttribute('aria-hidden', 'true');
+}
+
+function renderSGTable(tableData, productSizes) {
+  if (!tableData) return '';
+  const { headers, rows } = tableData;
+  const filled = rows.filter(r => r.some(c => String(c).trim()));
+  if (!filled.length) return '<p class="sg-note">Sin datos para esta tabla.</p>';
+  return `<table class="sg-table">
+    <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+    <tbody>
+      ${filled.map(row => {
+        const first = String(row[0]).trim();
+        const isAvail = productSizes?.includes(first);
+        return `<tr class="${isAvail?'sg-row-available':''}">
+          ${row.map(c=>`<td>${c}</td>`).join('')}
+        </tr>`;
+      }).join('')}
+    </tbody>
+  </table>`;
+}
+
+function showSizeGuideTable(gender) {
+  const p = currentPDPProduct;
+  if (!p) return;
+
+  document.getElementById('sgGenderLabel').textContent =
+    gender === 'male' ? 'Masculino / Unisex' : 'Femenino';
+  document.getElementById('sgStep1').style.display = 'none';
+  document.getElementById('sgStep2').style.display = '';
+
+  const productSizes = p.sizes || [];
+  const availEl = document.getElementById('sgAvailableSizes');
+  if (productSizes.length > 1) {
+    availEl.innerHTML = `
+      <div class="sg-sizes-label">Tallas de este producto</div>
+      <div class="sg-size-chips">${productSizes.map(s =>
+        `<button class="sg-size-chip" data-size="${s}">${s}</button>`
+      ).join('')}</div>`;
+    availEl.style.display = '';
+    availEl.querySelectorAll('.sg-size-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        availEl.querySelectorAll('.sg-size-chip').forEach(c => c.classList.remove('active'));
+        chip.classList.add('active');
+        const sz = chip.dataset.size;
+        document.querySelectorAll('#sgBody tbody tr').forEach(tr => {
+          tr.classList.toggle('sg-row-highlight', tr.querySelector('td')?.textContent.trim() === sz);
+        });
+      });
+    });
+  } else {
+    availEl.style.display = 'none';
+  }
+
+  const sgBody = document.getElementById('sgBody');
+  const data = p.sizeGuideData;
+  const cat = p.category;
+
+  if (data) {
+    const gd = data[gender] || data.male;
+    if (data.type === 'accessories') {
+      sgBody.innerHTML = `<div class="sg-custom">${data.description || 'Sin información de medidas.'}</div>`;
+    } else if (data.type === 'shoes') {
+      sgBody.innerHTML = renderSGTable(gd, productSizes);
+    } else {
+      const sizesTable = renderSGTable(gd.sizes || gd, productSizes);
+      const measTable = gd.measurements ? renderSGTable(gd.measurements, productSizes) : '';
+      sgBody.innerHTML = '<p class="sg-section-title">Tabla de tallas</p>' + sizesTable +
+        (measTable ? '<p class="sg-section-title" style="margin-top:24px">Medidas exactas</p>' + measTable : '');
+    }
+  } else if (cat === 'accesorios') {
+    sgBody.innerHTML = `<div class="sg-custom">${p.sizeGuideText || 'Consulta con el vendedor para información sobre medidas de este accesorio.'}</div>`;
   } else if (cat === 'zapatos') {
     sgBody.innerHTML = SHOE_GUIDE;
   } else {
     sgBody.innerHTML = CLOTHING_GUIDE;
   }
+}
 
-  document.getElementById('sgOverlay').style.display = 'flex';
+document.getElementById('openSizeGuide').addEventListener('click', () => {
+  document.getElementById('sgStep1').style.display = '';
+  document.getElementById('sgStep2').style.display = 'none';
+  openSizeGuideOverlay();
 });
 
-function closeSizeGuide() {
-  document.getElementById('sgOverlay').style.display = 'none';
-}
+document.getElementById('sgBtnMale').addEventListener('click', () => showSizeGuideTable('male'));
+document.getElementById('sgBtnFemale').addEventListener('click', () => showSizeGuideTable('female'));
+document.getElementById('sgBackBtn').addEventListener('click', () => {
+  document.getElementById('sgStep1').style.display = '';
+  document.getElementById('sgStep2').style.display = 'none';
+});
 
 document.getElementById('sgClose').addEventListener('click', closeSizeGuide);
 document.getElementById('sgOverlay').addEventListener('click', e => {

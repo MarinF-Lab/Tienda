@@ -339,13 +339,36 @@
   </div>
 
   <!-- MODAL GUÍA DE TALLAS -->
-  <div class="sg-overlay" id="sgOverlay" aria-hidden="true">
-    <div class="sg-modal">
+  <div class="sg-overlay" id="sgOverlay" style="display:none" aria-hidden="true">
+    <div class="sg-modal" id="sgModal">
       <div class="sg-header">
-        <h3>Guía de Tallas</h3>
+        <h3 id="sgTitle">Guía de Tallas</h3>
         <button class="sg-close" id="sgClose">✕</button>
       </div>
-      <div class="sg-body" id="sgBody"></div>
+      <!-- Paso 1: Selector de género -->
+      <div id="sgStep1" class="sg-body">
+        <p class="sg-gender-q">¿Para quién necesitas la talla?</p>
+        <div class="sg-gender-btns">
+          <button class="sg-gender-btn" id="sgBtnMale">
+            <span class="sg-gender-icon">👔</span>
+            <strong>Masculino</strong>
+            <small>Unisex</small>
+          </button>
+          <button class="sg-gender-btn" id="sgBtnFemale">
+            <span class="sg-gender-icon">👗</span>
+            <strong>Femenino</strong>
+          </button>
+        </div>
+      </div>
+      <!-- Paso 2: Tablas -->
+      <div id="sgStep2" style="display:none">
+        <div class="sg-step2-bar">
+          <button class="sg-back-btn" id="sgBackBtn">← Volver</button>
+          <span class="sg-gender-badge" id="sgGenderLabel"></span>
+        </div>
+        <div class="sg-available-wrap" id="sgAvailableSizes"></div>
+        <div class="sg-body" id="sgBody"></div>
+      </div>
     </div>
   </div>
 

@@ -196,6 +196,29 @@ input, select, button, textarea { font-family: inherit; }
 .progress-bar-wrap { flex: 1; height: 6px; background: var(--gray-200); border-radius: 50px; overflow: hidden; }
 .progress-bar { height: 100%; background: var(--accent); border-radius: 50px; width: 0%; transition: width .3s; }
 
+/* ===== SIZE GUIDE EDITOR ===== */
+.sg-editor-root { border: 1.5px solid var(--gray-200); border-radius: 10px; overflow: hidden; background: var(--gray-50); }
+.sget-tabs { display: flex; border-bottom: 1.5px solid var(--gray-200); }
+.sget-tab { flex: 1; padding: 10px; font-size: 12px; font-weight: 700; border: none; background: transparent; cursor: pointer; color: var(--gray-600); transition: background .15s, color .15s; }
+.sget-tab.active { background: var(--white); color: var(--black); box-shadow: inset 0 -2px 0 var(--accent); }
+.sget-pane { padding: 16px; }
+.sget-sublabel { font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--gray-600); letter-spacing: .4px; margin-bottom: 8px; }
+.sget-table-wrap { overflow-x: auto; }
+.sget-table { border-collapse: collapse; font-size: 12px; min-width: 100%; }
+.sget-table th { background: var(--gray-100); padding: 0; vertical-align: top; border: 1px solid var(--gray-200); min-width: 80px; }
+.sget-th-wrap { display: flex; align-items: center; gap: 2px; padding: 4px 6px; }
+.sget-th { border: none; background: transparent; font-size: 11px; font-weight: 700; text-transform: uppercase; color: var(--gray-600); width: 100%; min-width: 0; outline: none; padding: 2px; }
+.sget-table td { border: 1px solid var(--gray-200); padding: 0; }
+.sget-table td:last-child { border: none; width: 28px; }
+.sget-cell { border: none; background: transparent; width: 100%; padding: 6px 8px; font-size: 12px; outline: none; color: var(--black); }
+.sget-cell:focus, .sget-th:focus { background: #fef9c3; }
+.sget-add-col-th { width: 28px !important; border: none; text-align: center; }
+.sget-del-td { border: none; text-align: center; }
+.icon-btn { background: none; border: none; cursor: pointer; font-size: 14px; color: var(--gray-400); line-height: 1; padding: 2px 4px; border-radius: 4px; transition: color .15s; }
+.icon-btn:hover { color: var(--black); }
+.sget-add-row { margin-top: 8px; font-size: 11px; padding: 6px 12px; }
+.sget-desc { width: 100%; padding: 10px 12px; border: none; border-radius: 0; font-size: 13px; outline: none; color: var(--black); background: transparent; resize: vertical; min-height: 100px; }
+
 /* ===== CATEGORIES VIEW ===== */
 .category-row { display: flex; align-items: center; gap: 12px; padding: 14px 20px; border-bottom: 1px solid var(--gray-100); }
 .category-row:last-child { border-bottom: none; }
