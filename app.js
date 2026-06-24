@@ -1,6 +1,6 @@
 import { db } from './firebase-config.js';
 import {
-  collection, getDocs, getDoc, doc, addDoc, query, where
+  collection, getDocs, getDoc, doc, addDoc, query, where, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
 
 /* ===== PRODUCTOS POR DEFECTO ===== */
@@ -736,6 +736,26 @@ function addToCart(product, size) {
   showToast(`"${product.name}" agregado al carrito`);
 }
 
+async function deductStock(cartItems) {
+  for (const item of cartItems) {
+    try {
+      const productRef = doc(db, 'products', item.id);
+      const updates = { stock: increment(-item.qty) };
+      const cached = allProductsCache.find(p => p.id === item.id);
+      if (cached && cached.sizeStock && item.size in cached.sizeStock) {
+        updates[`sizeStock.${item.size}`] = increment(-item.qty);
+      }
+      await updateDoc(productRef, updates);
+      if (cached) {
+        cached.stock = Math.max(0, (cached.stock || 0) - item.qty);
+        if (cached.sizeStock && item.size in cached.sizeStock) {
+          cached.sizeStock[item.size] = Math.max(0, (cached.sizeStock[item.size] || 0) - item.qty);
+        }
+      }
+    } catch(e) { console.warn('No se pudo descontar stock para', item.id, e); }
+  }
+}
+
 function removeFromCart(key) {
   cart = cart.filter(i => i.key !== key);
   saveCart();
@@ -851,9 +871,11 @@ document.getElementById('checkoutForm2').addEventListener('submit', e => {
   const orderNum = 'STR-' + String(Date.now()).slice(-6);
   document.getElementById('orderNum').textContent = '#' + orderNum;
   goToStep(3);
+  const purchasedItems = [...cart];
   cart = [];
   saveCart();
   updateCartUI();
+  deductStock(purchasedItems);
 });
 document.getElementById('continueShopping').addEventListener('click', () => {
   closeCheckout();
