@@ -62,6 +62,34 @@ let cart = JSON.parse(localStorage.getItem('stride_cart') || '[]');
 function saveCart() { localStorage.setItem('stride_cart', JSON.stringify(cart)); }
 function fmt(n) { return '$' + Number(n).toLocaleString('es-CL'); }
 
+/* ===== COLORES ===== */
+const COLOR_MAP = {
+  '#222':'Negro','#222222':'Negro','#1a1a1a':'Negro','#000':'Negro','#000000':'Negro',
+  '#333':'Negro oscuro',
+  '#fff':'Blanco','#ffffff':'Blanco',
+  '#ef4444':'Rojo','#dc2626':'Rojo oscuro',
+  '#ec4899':'Rosa','#f472b6':'Rosa claro',
+  '#f97316':'Naranja','#fb923c':'Naranja claro',
+  '#eab308':'Amarillo','#facc15':'Amarillo',
+  '#16a34a':'Verde','#22c55e':'Verde',
+  '#0ea5e9':'Celeste','#38bdf8':'Celeste claro',
+  '#3b82f6':'Azul','#2563eb':'Azul oscuro',
+  '#7c3aed':'Morado','#8b5cf6':'Morado claro',
+  '#a855f7':'Lila','#c084fc':'Lila claro',
+  '#6b7280':'Gris','#9ca3af':'Gris claro','#d1d5db':'Gris claro',
+  '#555':'Gris oscuro',
+  '#92400e':'Café','#854d0e':'Café','#78350f':'Café oscuro',
+  '#3d1f00':'Café oscuro','#1a0a00':'Café negro',
+  '#d4af37':'Dorado','#c0c0c0':'Plateado',
+  '#1e1e2e':'Marino','#1a1a2e':'Marino oscuro','#1e293b':'Marino',
+  '#f5e4c3':'Beige','#f5f0e8':'Beige',
+};
+function parseColor(c) {
+  if (!c) return { name:'Color', hex:'#ccc' };
+  if (c.includes('|')) { const [n,h]=c.split('|'); return {name:n.trim(),hex:h.trim()}; }
+  return { name: COLOR_MAP[c.toLowerCase()] || 'Color', hex: c };
+}
+
 /* ===== ESTRELLAS ===== */
 function starsHtml(avg, count) {
   if (!count) return '';
@@ -78,9 +106,11 @@ function renderCard(p) {
   card.className = 'product-card';
   card.dataset.category = p.subcategory || p.category || '';
 
-  const colorDots = (p.colors||[]).map(c =>
-    `<div class="color-dot" style="background:${c}" title="${c}"></div>`
-  ).join('');
+  const colorDots = (p.colors||[]).map(c => {
+    const {name, hex} = parseColor(c);
+    const label = name.length > 8 ? name.slice(0,7) + '…' : name;
+    return `<div class="color-swatch" title="${name}"><div class="color-dot" style="background:${hex}"></div><span class="color-dot-label">${label}</span></div>`;
+  }).join('');
 
   const sizeBtns = (p.sizes||[]).map((s, i) =>
     `<button class="size-btn ${i === 0 ? 'selected' : ''}" data-size="${s}">${s}</button>`
@@ -258,14 +288,14 @@ function openPDP(productId) {
 
   /* Colors */
   const colorsEl = document.getElementById('pdpColors');
-  colorsEl.innerHTML = (p.colors||[]).map(c =>
-    `<div class="pdp-color-dot" style="background:${c}" title="${c}"></div>`
-  ).join('');
-  colorsEl.querySelectorAll('.pdp-color-dot').forEach((dot, i) => {
-    if (i === 0) dot.classList.add('selected');
-    dot.addEventListener('click', () => {
-      colorsEl.querySelectorAll('.pdp-color-dot').forEach(d => d.classList.remove('selected'));
-      dot.classList.add('selected');
+  colorsEl.innerHTML = (p.colors||[]).map((c, i) => {
+    const {name, hex} = parseColor(c);
+    return `<div class="pdp-color-swatch${i===0?' selected':''}"><div class="pdp-color-dot" style="background:${hex}"></div><span class="pdp-color-label">${name}</span></div>`;
+  }).join('');
+  colorsEl.querySelectorAll('.pdp-color-swatch').forEach(swatch => {
+    swatch.addEventListener('click', () => {
+      colorsEl.querySelectorAll('.pdp-color-swatch').forEach(s => s.classList.remove('selected'));
+      swatch.classList.add('selected');
     });
   });
 
@@ -457,10 +487,11 @@ document.addEventListener('keydown', e => {
 
 /* ===== GUÍA DE TALLAS ===== */
 const SHOE_GUIDE = `
-<p class="sg-section-title">Zapatos — Tallas EU / US / CM</p>
+<p class="sg-section-title">Calzado — Equivalencia de Tallas</p>
 <table class="sg-table">
-  <thead><tr><th>EU</th><th>US Hombre</th><th>US Mujer</th><th>CM</th></tr></thead>
+  <thead><tr><th>CL / EU</th><th>US Hombre</th><th>US Mujer</th><th>CM</th></tr></thead>
   <tbody>
+    <tr><td>35</td><td>3.5</td><td>5</td><td>22</td></tr>
     <tr><td>36</td><td>4</td><td>5.5</td><td>22.5</td></tr>
     <tr><td>37</td><td>5</td><td>6.5</td><td>23.5</td></tr>
     <tr><td>38</td><td>6</td><td>7.5</td><td>24</td></tr>
@@ -471,22 +502,26 @@ const SHOE_GUIDE = `
     <tr><td>43</td><td>10</td><td>11.5</td><td>28</td></tr>
     <tr><td>44</td><td>11</td><td>12.5</td><td>29</td></tr>
     <tr><td>45</td><td>12</td><td>13.5</td><td>30</td></tr>
+    <tr><td>46</td><td>13</td><td>—</td><td>30.5</td></tr>
   </tbody>
 </table>
-<p class="sg-note">Para medir tu pie: traza el contorno sobre papel y mide desde el talón hasta el dedo más largo.</p>
+<p class="sg-note">Chile usa tallas europeas (CL = EU). Para medir tu pie: traza el contorno sobre papel y mide desde el talón hasta el dedo más largo.</p>
 `;
 
 const CLOTHING_GUIDE = `
 <p class="sg-section-title">Ropa & Accesorios — Tabla de Tallas</p>
 <table class="sg-table">
-  <thead><tr><th>Talla</th><th>XS</th><th>S</th><th>M</th><th>L</th><th>XL</th></tr></thead>
+  <thead><tr><th>Talla</th><th>CL / EU</th><th>Pecho (cm)</th><th>Cintura (cm)</th><th>Cadera (cm)</th></tr></thead>
   <tbody>
-    <tr><td>Pecho (cm)</td><td>78–82</td><td>82–86</td><td>86–90</td><td>90–96</td><td>96–104</td></tr>
-    <tr><td>Cintura (cm)</td><td>60–64</td><td>64–68</td><td>68–72</td><td>72–78</td><td>78–86</td></tr>
-    <tr><td>Cadera (cm)</td><td>84–88</td><td>88–92</td><td>92–96</td><td>96–102</td><td>102–110</td></tr>
+    <tr><td>XS</td><td>34</td><td>78–82</td><td>60–64</td><td>84–88</td></tr>
+    <tr><td>S</td><td>36</td><td>82–86</td><td>64–68</td><td>88–92</td></tr>
+    <tr><td>M</td><td>38</td><td>86–90</td><td>68–72</td><td>92–96</td></tr>
+    <tr><td>L</td><td>40</td><td>90–96</td><td>72–78</td><td>96–102</td></tr>
+    <tr><td>XL</td><td>42</td><td>96–104</td><td>78–86</td><td>102–110</td></tr>
+    <tr><td>XXL</td><td>44</td><td>104–112</td><td>86–94</td><td>110–118</td></tr>
   </tbody>
 </table>
-<p class="sg-note">Medidas aproximadas. Para mayor precisión, mide sobre ropa interior.</p>
+<p class="sg-note">Chile usa talla europea (número par). Medidas aproximadas; mide sobre ropa interior para mayor precisión.</p>
 `;
 
 document.getElementById('openSizeGuide').addEventListener('click', () => {

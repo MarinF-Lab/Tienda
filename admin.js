@@ -63,11 +63,47 @@ const DEFAULT_CATEGORIES = [
 ];
 
 /* ===================================================================
+   COLORES PREESTABLECIDOS
+   =================================================================== */
+const PRESET_COLORS = [
+  { name:'Negro',      hex:'#1a1a1a' },
+  { name:'Blanco',     hex:'#ffffff' },
+  { name:'Gris',       hex:'#6b7280' },
+  { name:'Gris claro', hex:'#d1d5db' },
+  { name:'Rojo',       hex:'#ef4444' },
+  { name:'Rosa',       hex:'#ec4899' },
+  { name:'Naranja',    hex:'#f97316' },
+  { name:'Amarillo',   hex:'#eab308' },
+  { name:'Verde',      hex:'#16a34a' },
+  { name:'Azul',       hex:'#3b82f6' },
+  { name:'Celeste',    hex:'#0ea5e9' },
+  { name:'Morado',     hex:'#7c3aed' },
+  { name:'Lila',       hex:'#a855f7' },
+  { name:'Café',       hex:'#92400e' },
+  { name:'Beige',      hex:'#f5e4c3' },
+  { name:'Dorado',     hex:'#d4af37' },
+  { name:'Plateado',   hex:'#c0c0c0' },
+  { name:'Marino',     hex:'#1e293b' },
+];
+
+function parseColor(c) {
+  if (!c) return { name:'Color', hex:'#ccc' };
+  if (typeof c === 'string' && c.includes('|')) { const [n,h]=c.split('|'); return {name:n.trim(),hex:h.trim()}; }
+  const hex = (c||'').trim().toLowerCase();
+  const preset = PRESET_COLORS.find(p => p.hex.toLowerCase() === hex);
+  if (preset) return { ...preset };
+  const nameMatch = PRESET_COLORS.find(p => p.name.toLowerCase() === hex);
+  if (nameMatch) return { ...nameMatch };
+  return { name:'Color', hex: c };
+}
+
+/* ===================================================================
    FIRESTORE CACHE
    =================================================================== */
 let productsCache = [];
 let categoriesCache = [];
 let reviewsCache = [];
+let selectedColors = [];
 
 async function refreshProducts() {
   const snapshot = await getDocs(collection(db, 'products'));
@@ -383,6 +419,47 @@ document.getElementById('pDiscountPct').addEventListener('input', () => {
 });
 
 /* ===================================================================
+   SELECTOR DE COLORES
+   =================================================================== */
+function renderColorPicker() {
+  const presetRow = document.getElementById('colorPresetsRow');
+  if (!presetRow) return;
+  presetRow.innerHTML = PRESET_COLORS.map(c => `
+    <button type="button" class="color-preset-btn${selectedColors.some(s=>s.hex===c.hex)?' active':''}"
+      data-name="${c.name}" data-hex="${c.hex}" title="${c.name}"
+      style="background:${c.hex}${c.hex==='#ffffff'?';outline:1.5px solid #d1d5db;outline-offset:-1px':''}"></button>
+  `).join('');
+  presetRow.querySelectorAll('.color-preset-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const name = btn.dataset.name, hex = btn.dataset.hex;
+      const idx = selectedColors.findIndex(s => s.hex === hex);
+      if (idx >= 0) selectedColors.splice(idx, 1);
+      else selectedColors.push({ name, hex });
+      renderColorPicker();
+    });
+  });
+  const listEl = document.getElementById('selectedColorsList');
+  if (!listEl) return;
+  if (!selectedColors.length) {
+    listEl.innerHTML = '<span style="color:#9ca3af;font-size:12px">Ningún color seleccionado</span>';
+    return;
+  }
+  listEl.innerHTML = selectedColors.map((c, i) => `
+    <span class="color-chip">
+      <span class="color-chip-dot" style="background:${c.hex}${c.hex==='#ffffff'?';border:1px solid #d1d5db':''}"></span>
+      ${c.name}
+      <button type="button" class="color-chip-remove" data-idx="${i}" title="Quitar">×</button>
+    </span>
+  `).join('');
+  listEl.querySelectorAll('.color-chip-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedColors.splice(+btn.dataset.idx, 1);
+      renderColorPicker();
+    });
+  });
+}
+
+/* ===================================================================
    FORMULARIO AGREGAR / EDITAR
    =================================================================== */
 function clearForm() {
@@ -390,6 +467,8 @@ function clearForm() {
   document.getElementById('productForm').reset();
   currentImages = [];
   renderImagesGrid();
+  selectedColors = [];
+  renderColorPicker();
 }
 
 function editProduct(id) {
@@ -411,10 +490,11 @@ function editProduct(id) {
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
   document.getElementById('pSizes').value = (p.sizes || []).join(',');
-  document.getElementById('pColors').value = (p.colors || []).join(',');
   document.getElementById('pSizeGuideText').value = p.sizeGuideText || '';
   currentImages = [...(p.images || [])];
   renderImagesGrid();
+  selectedColors = (p.colors || []).map(parseColor);
+  renderColorPicker();
   showView('add');
 }
 
@@ -436,10 +516,11 @@ function fillProductFormFromImport(p) {
   document.getElementById('pTag').value = p.tag || '';
   document.getElementById('pBg').value = p.bg || '';
   document.getElementById('pSizes').value = (p.sizes || []).join(',');
-  document.getElementById('pColors').value = (p.colors || []).join(',');
   document.getElementById('pSizeGuideText').value = p.sizeGuideText || '';
   currentImages = [...(p.images || [])];
   renderImagesGrid();
+  selectedColors = (p.colors || []).map(parseColor);
+  renderColorPicker();
   document.getElementById('formTitle').textContent = 'Completar datos del producto';
   document.getElementById('submitProductBtn').textContent = 'Actualizar Producto';
   showView('add');
@@ -468,7 +549,7 @@ document.getElementById('productForm').addEventListener('submit', async e => {
     tag: document.getElementById('pTag').value.trim() || null,
     bg: document.getElementById('pBg').value.trim() || 'linear-gradient(135deg,#f3f4f6,#e5e7eb)',
     sizes: document.getElementById('pSizes').value.split(',').map(s => s.trim()).filter(Boolean),
-    colors: document.getElementById('pColors').value.split(',').map(c => c.trim()).filter(Boolean),
+    colors: selectedColors.map(c => `${c.name}|${c.hex}`),
     sizeGuideText: document.getElementById('pSizeGuideText').value.trim() || null,
     active: true,
     avgRating: productsCache.find(x => x.id === editId)?.avgRating || 0,
@@ -556,7 +637,13 @@ async function importProductsExcel(file) {
         discountPct: row['Descuento_%'] ? Number(row['Descuento_%']) : null,
         stock: Number(row['Stock']) || 0,
         sizes: row['Tallas'] ? String(row['Tallas']).split(',').map(s=>s.trim()).filter(Boolean) : [],
-        colors: row['Colores'] ? String(row['Colores']).split(',').map(c=>c.trim()).filter(Boolean) : [],
+        colors: row['Colores'] ? String(row['Colores']).split(',').map(c => {
+          const t = c.trim();
+          const parsed = parseColor(t);
+          if (parsed.name !== 'Color') return `${parsed.name}|${parsed.hex}`;
+          const byName = PRESET_COLORS.find(p => p.name.toLowerCase() === t.toLowerCase());
+          return byName ? `${byName.name}|${byName.hex}` : t;
+        }).filter(Boolean) : [],
         tag: String(row['Badge'] || '').trim() || null,
         bg: String(row['Fondo_CSS'] || 'linear-gradient(135deg,#f3f4f6,#e5e7eb)').trim(),
         description: String(row['Descripcion'] || row['Descripción'] || '').trim(),
@@ -899,6 +986,8 @@ document.getElementById('changePasswordForm').addEventListener('submit', async e
   document.getElementById('changePasswordForm').reset();
   toast('Contraseña actualizada ✓', 'success');
 });
+
+renderColorPicker();
 
 /* ===================================================================
    LOGIN / LOGOUT

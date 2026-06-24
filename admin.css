@@ -165,6 +165,18 @@ input, select, button, textarea { font-family: inherit; }
 .form-group input, .form-group select, .form-group textarea { padding: 10px 12px; border: 1.5px solid var(--gray-200); border-radius: 8px; font-size: 13px; outline: none; transition: border-color .2s; color: var(--black); background: var(--white); resize: vertical; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
 .form-hint { font-size: 11px; color: var(--gray-400); }
+
+/* Color picker */
+.color-presets-row { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 0 8px; }
+.color-preset-btn { width: 28px; height: 28px; border-radius: 50%; border: 2.5px solid transparent; cursor: pointer; transition: transform .15s, box-shadow .15s; padding: 0; }
+.color-preset-btn:hover { transform: scale(1.2); }
+.color-preset-btn.active { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(239,68,68,.25); transform: scale(1.1); }
+.selected-colors-list { display: flex; flex-wrap: wrap; gap: 6px; min-height: 30px; padding: 2px 0 4px; }
+.color-chip { display: inline-flex; align-items: center; gap: 5px; background: var(--gray-100); border-radius: 20px; padding: 3px 10px 3px 6px; font-size: 12px; font-weight: 500; color: var(--black); }
+.color-chip-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.color-chip-remove { background: none; border: none; cursor: pointer; color: var(--gray-400); font-size: 15px; line-height: 1; padding: 0; transition: color .15s; }
+.color-chip-remove:hover { color: var(--black); }
+
 .input-prefix { display: flex; align-items: center; border: 1.5px solid var(--gray-200); border-radius: 8px; overflow: hidden; transition: border-color .2s; }
 .input-prefix:focus-within { border-color: var(--accent); }
 .input-prefix span { padding: 10px 12px; background: var(--gray-50); color: var(--gray-400); font-weight: 600; border-right: 1.5px solid var(--gray-200); font-size: 13px; }
