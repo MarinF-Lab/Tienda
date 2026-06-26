@@ -199,10 +199,6 @@ function renderCard(p) {
     return `<div class="color-swatch" title="${name}"><div class="color-dot" style="background:${hex}"></div><span class="color-dot-label">${label}</span></div>`;
   }).join('');
 
-  const sizeBtns = (p.sizes||[]).map((s, i) =>
-    `<button class="size-btn ${i === 0 ? 'selected' : ''}" data-size="${s}">${s}</button>`
-  ).join('');
-
   const mainImg = (p.images && p.images.length) ? p.images[0] : p.imageUrl;
   const imgInner = mainImg
     ? `<img src="${mainImg}" alt="${p.name}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none';this.nextElementSibling.style.display='block'" /><span style="display:none;font-size:80px;filter:drop-shadow(0 8px 16px rgba(0,0,0,.2))">${p.emoji||'📦'}</span>`
@@ -220,7 +216,6 @@ function renderCard(p) {
       <div class="product-card__category">${p.subcategory || p.category || 'Accesorio'}</div>
       ${reviewCount ? `<div class="pdp-stars" style="margin-bottom:8px;font-size:13px">${starsHtml(avgRating, reviewCount)}</div>` : ''}
       <div class="product-card__colors">${colorDots}</div>
-      <div class="product-card__sizes">${sizeBtns}</div>
       <div class="product-card__footer">
         <div class="product-card__price">
           ${isSale ? `<span class="price-original">${fmt(p.originalPrice)}</span>` : ''}
@@ -234,19 +229,10 @@ function renderCard(p) {
   card.querySelector('.product-card__img').addEventListener('click', () => openPDP(p.id));
   card.querySelector('.product-card__name').addEventListener('click', () => openPDP(p.id));
 
-  card.querySelectorAll('.size-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      card.querySelectorAll('.size-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-    });
-  });
-
   card.querySelector('.product-card__add').addEventListener('click', e => {
     e.stopPropagation();
     if (p.stock === 0) return;
-    const selectedSize = card.querySelector('.size-btn.selected')?.dataset.size || (p.sizes||[])[0];
-    addToCart(p, selectedSize);
+    openPDP(p.id);
   });
 
   return card;
