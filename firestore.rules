@@ -1,9 +1,66 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    /* ----------------------------------------------------------------
+       CATÁLOGO Y CONFIGURACIÓN
+       Lectura pública. La escritura queda abierta porque el panel de
+       administración usa una contraseña local (no Firebase Auth) y la
+       tienda descuenta stock al confirmar una compra.
+       NOTA DE SEGURIDAD: para blindar la escritura, el admin debería
+       autenticarse con Firebase Auth y usar un custom claim (ej. admin:true),
+       reemplazando "if true" por "if request.auth.token.admin == true".
+       ---------------------------------------------------------------- */
     match /products/{productId} {
       allow read: if true;
       allow write: if true;
+    }
+    match /categories/{categoryId} {
+      allow read: if true;
+      allow write: if true;
+    }
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    /* ----------------------------------------------------------------
+       USUARIOS Y COMPRAS
+       Cada cliente solo puede leer y escribir su propia carpeta y su
+       subcolección de compras. Estas compras son las que habilitan dejar
+       reseñas.
+       NOTA: como no hay backend de pagos, el propio cliente escribe su
+       registro de compra. Para integridad total, estas compras deberían
+       escribirse desde una Cloud Function tras confirmar el pago
+       (ej. webhook de Transbank), y aquí poner "allow write: if false".
+       ---------------------------------------------------------------- */
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+
+      match /purchases/{productId} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+
+    /* ----------------------------------------------------------------
+       RESEÑAS
+       Lectura pública. Solo puede CREAR una reseña quien:
+        - está autenticado,
+        - firma la reseña con su propio uid,
+        - la marca como compra verificada,
+        - y tiene un registro de compra del producto reseñado.
+       La edición está bloqueada. El borrado queda abierto para que el
+       panel de administración (sin Firebase Auth) pueda moderar; al migrar
+       el admin a Firebase Auth, cambiar a "request.auth.token.admin == true".
+       ---------------------------------------------------------------- */
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.verifiedPurchase == true
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid)/purchases/$(request.resource.data.productId));
+      allow update: if false;
+      allow delete: if true;
     }
   }
 }
