@@ -1449,15 +1449,22 @@ document.getElementById('togglePwd').addEventListener('click', () => {
 });
 
 /* ===== MOBILE MENU ===== */
+let _menuScrollY = 0;
 function closeMobileMenu() {
   document.querySelector('.sidebar').classList.remove('open');
   document.getElementById('sidebarOverlay').classList.remove('active');
-  document.body.style.overflow = '';
+  if (document.body.classList.contains('no-scroll')) {
+    document.body.classList.remove('no-scroll');
+    document.body.style.top = '';
+    window.scrollTo(0, _menuScrollY);
+  }
 }
 document.getElementById('menuToggle').addEventListener('click', () => {
+  _menuScrollY = window.scrollY;
+  document.body.style.top = `-${_menuScrollY}px`;
+  document.body.classList.add('no-scroll');
   document.querySelector('.sidebar').classList.add('open');
   document.getElementById('sidebarOverlay').classList.add('active');
-  document.body.style.overflow = 'hidden';
 });
 document.getElementById('sidebarOverlay').addEventListener('click', closeMobileMenu);
 document.getElementById('sidebarClose').addEventListener('click', closeMobileMenu);

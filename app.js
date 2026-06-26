@@ -243,78 +243,297 @@ function renderCard(p) {
   return card;
 }
 
-/* ===== SECCIONES DINÁMICAS ===== */
+/* ===================================================================
+   CATÁLOGO: PESTAÑAS + FILTROS + PAGINACIÓN
+   =================================================================== */
+const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
+const PER_PAGE = 10;
+let catalogProducts = [];
+let catalogCategories = [];
+let catalogState = {
+  category: 'all', subcategory: 'all',
+  price: 'all', priceMin: null, priceMax: null,
+  onlyOffers: false, sort: 'relevance', page: 1,
+};
+const PRICE_TIERS = [
+  { key:'all', label:'Todos los precios', min:null, max:null },
+  { key:'t1',  label:'Menos de $20.000',   min:0,      max:20000 },
+  { key:'t2',  label:'$20.000 a $50.000',  min:20000,  max:50000 },
+  { key:'t3',  label:'$50.000 a $100.000', min:50000,  max:100000 },
+  { key:'t4',  label:'Más de $100.000',    min:100000, max:null },
+];
+
 function renderDynamicSections(products, categories) {
-  const navLinks = document.getElementById('navCatLinks');
-  navLinks.innerHTML = categories.map(c =>
-    `<li><a href="#section-${c.id}">${c.name}</a></li>`
+  catalogProducts = products.filter(p => p.active !== false);
+  catalogCategories = categories;
+
+  const linkHtml = categories.map(c =>
+    `<li><a href="#catalogo" data-cat="${c.id}">${c.name}</a></li>`
   ).join('') + '<li><a href="#ofertas">Ofertas</a></li>';
-
+  const navLinks = document.getElementById('navCatLinks');
+  if (navLinks) navLinks.innerHTML = linkHtml;
   const footerLinks = document.getElementById('footerCatLinks');
-  if (footerLinks) {
-    footerLinks.innerHTML = categories.map(c =>
-      `<li><a href="#section-${c.id}">${c.name}</a></li>`
-    ).join('') + '<li><a href="#ofertas">Ofertas</a></li>';
-  }
-
-  const catGrid = document.getElementById('catGrid');
-  catGrid.innerHTML = categories.slice(0, 3).map(c => `
-    <div class="category-card" onclick="scrollTo('#section-${c.id}')">
-      <div class="category-card__img" style="background:${c.bg||'linear-gradient(135deg,#1e1e2e,#3d3d64)'}">
-        <span>${c.emoji||'📦'}</span>
-      </div>
-      <div class="category-card__info">
-        <h3>${c.name}</h3>
-        <span>Ver todo →</span>
-      </div>
-    </div>
-  `).join('');
-
-  const container = document.getElementById('dynamicSections');
-  container.innerHTML = '';
-
-  categories.forEach((cat, i) => {
-    const catProducts = products.filter(p => p.category === cat.id && p.active !== false);
-    const subcats = [...new Set(catProducts.map(p => p.subcategory).filter(Boolean))];
-
-    const section = document.createElement('section');
-    section.className = `products-section${i % 2 === 1 ? ' products-section--alt' : ''}`;
-    section.id = `section-${cat.id}`;
-
-    const filtersHtml = subcats.length ? `
-      <div class="filters" id="filters-${cat.id}">
-        <button class="filter-btn active" data-filter="all">Todos</button>
-        ${subcats.map(s => `<button class="filter-btn" data-filter="${s}">${s.charAt(0).toUpperCase()+s.slice(1)}</button>`).join('')}
-      </div>` : '';
-
-    section.innerHTML = `
-      <div class="container">
-        <div class="section-header">
-          <h2>${cat.name}</h2>
-          ${filtersHtml}
-        </div>
-        <div class="products-grid" id="grid-${cat.id}"></div>
-      </div>
-    `;
-    container.appendChild(section);
-
-    const grid = section.querySelector(`#grid-${cat.id}`);
-    catProducts.forEach(p => grid.appendChild(renderCard(p)));
-
-    if (subcats.length) {
-      const filtersEl = section.querySelector(`#filters-${cat.id}`);
-      filtersEl.addEventListener('click', e => {
-        if (!e.target.matches('.filter-btn')) return;
-        filtersEl.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        e.target.classList.add('active');
-        const f = e.target.dataset.filter;
-        grid.querySelectorAll('.product-card').forEach(c => {
-          c.style.display = (f === 'all' || c.dataset.category === f) ? '' : 'none';
-        });
-      });
-    }
+  if (footerLinks) footerLinks.innerHTML = linkHtml;
+  document.querySelectorAll('[data-cat]').forEach(a => {
+    a.addEventListener('click', e => { e.preventDefault(); setCatalogCategory(a.dataset.cat, true); });
   });
+
+  renderOffersCarousel(catalogProducts.filter(p => p.originalPrice != null && p.originalPrice > 0));
+  renderCatalogTabs();
+  renderFilters();
+  renderCatalogGrid();
 }
+
+function renderCatalogTabs() {
+  const tabsEl = document.getElementById('catalogTabs');
+  const tabs = [{ id:'all', name:'Todos' }, ...catalogCategories.map(c => ({ id:c.id, name:c.name }))];
+  tabsEl.innerHTML = tabs.map(t =>
+    `<button class="catalog-tab${t.id===catalogState.category?' active':''}" data-tab="${t.id}">${t.name}</button>`
+  ).join('');
+  tabsEl.querySelectorAll('.catalog-tab').forEach(btn =>
+    btn.addEventListener('click', () => setCatalogCategory(btn.dataset.tab, false))
+  );
+}
+
+function setCatalogCategory(catId, scroll) {
+  catalogState.category = catId;
+  catalogState.subcategory = 'all';
+  catalogState.page = 1;
+  renderCatalogTabs();
+  renderFilters();
+  renderCatalogGrid();
+  if (scroll) document.getElementById('catalogo').scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+function getSubcategoriesFor(catId) {
+  const pool = catId === 'all' ? catalogProducts : catalogProducts.filter(p => p.category === catId);
+  return [...new Set(pool.map(p => p.subcategory).filter(Boolean))];
+}
+
+function renderFilters() {
+  const el = document.getElementById('catalogFilters');
+  const subcats = getSubcategoriesFor(catalogState.category);
+  const subHtml = subcats.length ? `
+    <div class="filter-group">
+      <h4>Subcategoría</h4>
+      <label class="filter-radio"><input type="radio" name="subcat" value="all" ${catalogState.subcategory==='all'?'checked':''}/><span>Todas</span></label>
+      ${subcats.map(s => `<label class="filter-radio"><input type="radio" name="subcat" value="${s}" ${catalogState.subcategory===s?'checked':''}/><span>${cap(s)}</span></label>`).join('')}
+    </div>` : '';
+  const priceHtml = `
+    <div class="filter-group">
+      <h4>Precio</h4>
+      ${PRICE_TIERS.map(t => `<label class="filter-radio"><input type="radio" name="price" value="${t.key}" ${catalogState.price===t.key?'checked':''}/><span>${t.label}</span></label>`).join('')}
+      <div class="filter-price-custom">
+        <input type="number" id="priceMinInput" placeholder="Mín" min="0" value="${catalogState.price==='custom'&&catalogState.priceMin!=null?catalogState.priceMin:''}"/>
+        <input type="number" id="priceMaxInput" placeholder="Máx" min="0" value="${catalogState.price==='custom'&&catalogState.priceMax!=null?catalogState.priceMax:''}"/>
+        <button type="button" id="priceApplyBtn">OK</button>
+      </div>
+    </div>`;
+  const offersHtml = `
+    <div class="filter-group">
+      <label class="filter-check"><input type="checkbox" id="onlyOffersChk" ${catalogState.onlyOffers?'checked':''}/><span>Solo ofertas</span></label>
+    </div>`;
+  el.innerHTML = `
+    <div class="filter-header">
+      <h3>Filtros</h3>
+      <button class="filter-clear" id="filterClear">Limpiar</button>
+    </div>
+    ${subHtml}${priceHtml}${offersHtml}
+    <button class="filter-apply-mobile" id="filterApplyMobile">Ver resultados</button>`;
+
+  el.querySelectorAll('input[name="subcat"]').forEach(r => r.addEventListener('change', () => {
+    catalogState.subcategory = r.value; catalogState.page = 1; renderCatalogGrid();
+  }));
+  el.querySelectorAll('input[name="price"]').forEach(r => r.addEventListener('change', () => {
+    const tier = PRICE_TIERS.find(t => t.key === r.value);
+    catalogState.price = r.value; catalogState.priceMin = tier.min; catalogState.priceMax = tier.max;
+    catalogState.page = 1; renderCatalogGrid();
+  }));
+  document.getElementById('priceApplyBtn').addEventListener('click', () => {
+    const mn = parseInt(document.getElementById('priceMinInput').value) || null;
+    const mx = parseInt(document.getElementById('priceMaxInput').value) || null;
+    catalogState.price = 'custom'; catalogState.priceMin = mn; catalogState.priceMax = mx; catalogState.page = 1;
+    el.querySelectorAll('input[name="price"]').forEach(r => r.checked = false);
+    renderCatalogGrid();
+  });
+  document.getElementById('onlyOffersChk').addEventListener('change', e => {
+    catalogState.onlyOffers = e.target.checked; catalogState.page = 1; renderCatalogGrid();
+  });
+  document.getElementById('filterClear').addEventListener('click', () => {
+    catalogState.subcategory='all'; catalogState.price='all'; catalogState.priceMin=null;
+    catalogState.priceMax=null; catalogState.onlyOffers=false; catalogState.page=1;
+    renderFilters(); renderCatalogGrid();
+  });
+  document.getElementById('filterApplyMobile').addEventListener('click', closeFiltersMobile);
+}
+
+function getFilteredProducts() {
+  let list = catalogProducts.slice();
+  if (catalogState.category !== 'all') list = list.filter(p => p.category === catalogState.category);
+  if (catalogState.subcategory !== 'all') list = list.filter(p => p.subcategory === catalogState.subcategory);
+  if (catalogState.onlyOffers) list = list.filter(p => p.originalPrice != null && p.originalPrice > 0);
+  if (catalogState.priceMin != null) list = list.filter(p => p.price >= catalogState.priceMin);
+  if (catalogState.priceMax != null) list = list.filter(p => p.price <= catalogState.priceMax);
+  switch (catalogState.sort) {
+    case 'price-asc':  list.sort((a,b) => a.price - b.price); break;
+    case 'price-desc': list.sort((a,b) => b.price - a.price); break;
+    case 'rating':     list.sort((a,b) => (b.avgRating||0) - (a.avgRating||0)); break;
+  }
+  return list;
+}
+
+function renderCatalogGrid() {
+  const grid = document.getElementById('catalogGrid');
+  const list = getFilteredProducts();
+  const total = list.length;
+  const pages = Math.max(1, Math.ceil(total / PER_PAGE));
+  if (catalogState.page > pages) catalogState.page = pages;
+  const start = (catalogState.page - 1) * PER_PAGE;
+  const pageItems = list.slice(start, start + PER_PAGE);
+
+  document.getElementById('catalogCount').textContent =
+    total ? `${total} producto${total !== 1 ? 's' : ''}` : 'Sin resultados';
+
+  grid.innerHTML = '';
+  if (!pageItems.length) {
+    grid.innerHTML = '<div class="catalog-empty">No hay productos que coincidan con los filtros.</div>';
+  } else {
+    pageItems.forEach(p => grid.appendChild(renderCard(p)));
+  }
+  renderPagination(pages);
+}
+
+function renderPagination(pages) {
+  const el = document.getElementById('catalogPagination');
+  if (pages <= 1) { el.innerHTML = ''; return; }
+  const cur = catalogState.page;
+  let html = `<button class="page-btn" data-page="${cur-1}" ${cur===1?'disabled':''}>‹</button>`;
+  for (let i = 1; i <= pages; i++) {
+    if (i === 1 || i === pages || Math.abs(i - cur) <= 1) {
+      html += `<button class="page-btn${i===cur?' active':''}" data-page="${i}">${i}</button>`;
+    } else if ((i === 2 && cur > 3) || (i === pages-1 && cur < pages-2)) {
+      html += `<span class="page-ellipsis">…</span>`;
+    }
+  }
+  html += `<button class="page-btn" data-page="${cur+1}" ${cur===pages?'disabled':''}>›</button>`;
+  el.innerHTML = html;
+  el.querySelectorAll('.page-btn').forEach(b => b.addEventListener('click', () => {
+    if (b.hasAttribute('disabled')) return;
+    catalogState.page = parseInt(b.dataset.page);
+    renderCatalogGrid();
+    document.getElementById('catalogo').scrollIntoView({ behavior:'smooth', block:'start' });
+  }));
+}
+
+document.getElementById('sortSelect').addEventListener('change', e => {
+  catalogState.sort = e.target.value; catalogState.page = 1; renderCatalogGrid();
+});
+
+/* ===== FILTROS MÓVIL ===== */
+function openFiltersMobile() {
+  document.getElementById('catalogFilters').classList.add('open');
+  document.getElementById('filtersOverlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+function closeFiltersMobile() {
+  document.getElementById('catalogFilters').classList.remove('open');
+  document.getElementById('filtersOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+}
+document.getElementById('filterToggle').addEventListener('click', openFiltersMobile);
+document.getElementById('filtersOverlay').addEventListener('click', closeFiltersMobile);
+
+/* ===================================================================
+   CARRUSEL DE OFERTAS
+   =================================================================== */
+let offersList = [];
+let offersIndex = 0;
+let offersTimer = null;
+
+function renderOffersCarousel(offers) {
+  offersList = offers;
+  const section = document.getElementById('ofertas');
+  const track = document.getElementById('offersTrack');
+  if (!offers.length) { section.style.display = 'none'; return; }
+  section.style.display = '';
+  track.innerHTML = offers.map(p => {
+    const img = (p.images && p.images.length) ? p.images[0] : p.imageUrl;
+    const pct = p.discountPct || (p.originalPrice ? Math.round((1 - p.price/p.originalPrice) * 100) : 0);
+    const inner = img
+      ? `<img src="${img}" alt="${p.name}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"/><span class="offer-slide__emoji" style="display:none">${p.emoji||'📦'}</span>`
+      : `<span class="offer-slide__emoji">${p.emoji||'📦'}</span>`;
+    return `<div class="offer-slide" data-id="${p.id}">
+      ${pct ? `<span class="offer-slide__badge">-${pct}%</span>` : ''}
+      <div class="offer-slide__img" style="background:${p.bg||'#f3f4f6'}">${inner}</div>
+      <div class="offer-slide__info">
+        <div class="offer-slide__name">${p.name}</div>
+        <div class="offer-slide__price"><span class="offer-slide__now">${fmt(p.price)}</span> <span class="offer-slide__was">${fmt(p.originalPrice)}</span></div>
+      </div>
+    </div>`;
+  }).join('');
+  track.querySelectorAll('.offer-slide').forEach(s =>
+    s.addEventListener('click', () => openPDP(s.dataset.id))
+  );
+  offersIndex = 0;
+  updateOffersPosition();
+  renderOffersDots();
+  startOffersAuto();
+}
+
+function offersStep() {
+  const track = document.getElementById('offersTrack');
+  const slide = track.querySelector('.offer-slide');
+  if (!slide) return 0;
+  const style = getComputedStyle(track);
+  const gap = parseFloat(style.columnGap || style.gap || '16') || 16;
+  return slide.getBoundingClientRect().width + gap;
+}
+function offersMaxIndex() {
+  const viewport = document.querySelector('.offers__viewport');
+  const step = offersStep();
+  if (!step || !viewport) return 0;
+  const perView = Math.max(1, Math.round(viewport.clientWidth / step));
+  return Math.max(0, offersList.length - perView);
+}
+function updateOffersPosition() {
+  const track = document.getElementById('offersTrack');
+  const max = offersMaxIndex();
+  if (offersIndex > max) offersIndex = max;
+  if (offersIndex < 0) offersIndex = 0;
+  track.style.transform = `translateX(-${offersIndex * offersStep()}px)`;
+  updateOffersDots();
+}
+function renderOffersDots() {
+  const dotsEl = document.getElementById('offersDots');
+  const count = offersMaxIndex() + 1;
+  if (count <= 1) { dotsEl.innerHTML = ''; return; }
+  dotsEl.innerHTML = Array.from({length: count}, (_, i) =>
+    `<button class="offers__dot${i===offersIndex?' active':''}" data-i="${i}" aria-label="Ir a ${i+1}"></button>`
+  ).join('');
+  dotsEl.querySelectorAll('.offers__dot').forEach(d =>
+    d.addEventListener('click', () => { offersIndex = parseInt(d.dataset.i); updateOffersPosition(); resetOffersAuto(); })
+  );
+}
+function updateOffersDots() {
+  document.querySelectorAll('#offersDots .offers__dot').forEach((d, i) =>
+    d.classList.toggle('active', i === offersIndex)
+  );
+}
+function offersNext() { offersIndex = offersIndex >= offersMaxIndex() ? 0 : offersIndex + 1; updateOffersPosition(); }
+function offersPrev() { offersIndex = offersIndex <= 0 ? offersMaxIndex() : offersIndex - 1; updateOffersPosition(); }
+function startOffersAuto() { stopOffersAuto(); offersTimer = setInterval(offersNext, 4000); }
+function stopOffersAuto() { if (offersTimer) clearInterval(offersTimer); offersTimer = null; }
+function resetOffersAuto() { if (offersTimer) startOffersAuto(); }
+
+document.getElementById('offersNext').addEventListener('click', () => { offersNext(); resetOffersAuto(); });
+document.getElementById('offersPrev').addEventListener('click', () => { offersPrev(); resetOffersAuto(); });
+document.getElementById('offersCarousel').addEventListener('mouseenter', stopOffersAuto);
+document.getElementById('offersCarousel').addEventListener('mouseleave', startOffersAuto);
+let _offersResizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(_offersResizeTimer);
+  _offersResizeTimer = setTimeout(() => { renderOffersDots(); updateOffersPosition(); }, 150);
+});
 
 /* ===== PDP MODAL ===== */
 let currentPDPProduct = null;
@@ -763,10 +982,10 @@ function addToCart(product, size) {
   }
   const key = `${product.id}-${size}`;
   const existing = cart.find(i => i.key === key);
-  if (existing) { existing.qty++; }
+  if (existing) { existing.qty++; existing.selected = true; }
   else {
     const mainImg = (product.images && product.images.length) ? product.images[0] : product.imageUrl;
-    cart.push({ key, id: product.id, name: product.name, emoji: product.emoji||'📦', imageUrl: mainImg||'', price: product.price, size, qty: 1 });
+    cart.push({ key, id: product.id, name: product.name, emoji: product.emoji||'📦', imageUrl: mainImg||'', price: product.price, size, qty: 1, selected: true });
   }
   saveCart();
   updateCartUI();
@@ -808,32 +1027,60 @@ function updateQty(key, delta) {
   updateCartUI();
 }
 
-function cartTotal() { return cart.reduce((sum, i) => sum + i.price * i.qty, 0); }
+function isSelected(item) { return item.selected !== false; }
+function selectedCartItems() { return cart.filter(isSelected); }
+function cartTotal() { return selectedCartItems().reduce((sum, i) => sum + i.price * i.qty, 0); }
+
+function toggleCartItem(key) {
+  const item = cart.find(i => i.key === key);
+  if (!item) return;
+  item.selected = !isSelected(item);
+  saveCart();
+  updateCartUI();
+}
+function setAllSelected(val) {
+  cart.forEach(i => i.selected = val);
+  saveCart();
+  updateCartUI();
+}
 
 function updateCartUI() {
   const total = cartTotal();
   const count = cart.reduce((s, i) => s + i.qty, 0);
+  const selCount = selectedCartItems().reduce((s, i) => s + i.qty, 0);
   document.getElementById('cartBadge').textContent = count;
   document.getElementById('cartSubtotal').textContent = fmt(total);
-  document.getElementById('cartShipping').textContent = total >= 50000 ? 'Gratis' : fmt(3990);
-  document.getElementById('cartTotal').textContent = fmt(total >= 50000 ? total : total + 3990);
+  document.getElementById('cartShipping').textContent = total >= 50000 || total === 0 ? 'Gratis' : fmt(3990);
+  document.getElementById('cartTotal').textContent = fmt(total >= 50000 ? total : total + (total === 0 ? 0 : 3990));
 
   const itemsEl = document.getElementById('cartItems');
   const emptyEl = document.getElementById('cartEmpty');
   const footerEl = document.getElementById('cartFooter');
+  const selectAllRow = document.getElementById('cartSelectAllRow');
 
   emptyEl.style.display = cart.length ? 'none' : 'flex';
   footerEl.style.display = cart.length ? 'block' : 'none';
+  selectAllRow.style.display = cart.length ? 'flex' : 'none';
+
+  const allSel = cart.length > 0 && cart.every(isSelected);
+  document.getElementById('cartSelectAll').checked = allSel;
+  document.getElementById('cartSelectedCount').textContent =
+    `${selCount} de ${count} seleccionado${count !== 1 ? 's' : ''}`;
+
+  const checkoutBtn = document.getElementById('checkoutBtn');
+  checkoutBtn.disabled = selCount === 0;
+  checkoutBtn.textContent = selCount > 0 ? `Comprar seleccionados (${selCount})` : 'Selecciona productos';
 
   Array.from(itemsEl.children).forEach(c => { if (c !== emptyEl) c.remove(); });
 
   cart.forEach(item => {
     const el = document.createElement('div');
-    el.className = 'cart-item';
+    el.className = 'cart-item' + (isSelected(item) ? '' : ' cart-item--unselected');
     const thumb = item.imageUrl
       ? `<img src="${item.imageUrl}" alt="${item.name}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'" />`
       : item.emoji;
     el.innerHTML = `
+      <input type="checkbox" class="cart-item__check" data-key="${item.key}" ${isSelected(item) ? 'checked' : ''} aria-label="Seleccionar" />
       <div class="cart-item__emoji">${thumb}</div>
       <div class="cart-item__details">
         <div class="cart-item__name">${item.name}</div>
@@ -849,6 +1096,7 @@ function updateCartUI() {
         <button class="cart-item__remove" data-key="${item.key}" aria-label="Eliminar">🗑</button>
       </div>
     `;
+    el.querySelector('.cart-item__check').addEventListener('change', () => toggleCartItem(item.key));
     el.querySelectorAll('.qty-btn').forEach(btn => {
       btn.addEventListener('click', () => updateQty(btn.dataset.key, +btn.dataset.delta));
     });
@@ -856,6 +1104,7 @@ function updateCartUI() {
     itemsEl.appendChild(el);
   });
 }
+document.getElementById('cartSelectAll').addEventListener('change', e => setAllSelected(e.target.checked));
 
 /* ===== CARRITO DRAWER ===== */
 function openCart() {
@@ -908,8 +1157,8 @@ document.getElementById('checkoutForm2').addEventListener('submit', e => {
   const orderNum = 'STR-' + String(Date.now()).slice(-6);
   document.getElementById('orderNum').textContent = '#' + orderNum;
   goToStep(3);
-  const purchasedItems = [...cart];
-  cart = [];
+  const purchasedItems = selectedCartItems();
+  cart = cart.filter(i => !isSelected(i)); // los no seleccionados quedan en el carrito
   saveCart();
   updateCartUI();
   deductStock(purchasedItems);
@@ -942,11 +1191,12 @@ document.getElementById('cardExpiry')?.addEventListener('input', e => {
 
 function renderOrderSummaryMini() {
   const el = document.getElementById('orderSummaryMini');
+  const items = selectedCartItems();
   const total = cartTotal();
-  const shipping = total >= 50000 ? 0 : 3990;
+  const shipping = total >= 50000 || total === 0 ? 0 : 3990;
   el.innerHTML = `
     <h5>Resumen del Pedido</h5>
-    ${cart.map(i => `<div class="summary-item"><span>${i.name} × ${i.qty} (${i.size})</span><span>${fmt(i.price * i.qty)}</span></div>`).join('')}
+    ${items.map(i => `<div class="summary-item"><span>${i.name} × ${i.qty} (${i.size})</span><span>${fmt(i.price * i.qty)}</span></div>`).join('')}
     <div class="summary-item"><span>Envío</span><span>${shipping === 0 ? 'Gratis' : fmt(shipping)}</span></div>
     <div class="summary-total"><span>Total</span><span>${fmt(total + shipping)}</span></div>
   `;

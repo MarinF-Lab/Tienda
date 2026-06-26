@@ -45,6 +45,7 @@ input, select, button, textarea { font-family: inherit; }
 
 /* ===== LAYOUT ===== */
 .admin-body { background: #f4f6f9; }
+body.no-scroll { position: fixed; left: 0; right: 0; width: 100%; overflow: hidden; }
 #adminApp { display: grid; grid-template-columns: var(--sidebar-w) 1fr; min-height: 100vh; }
 
 /* ===== SIDEBAR ===== */

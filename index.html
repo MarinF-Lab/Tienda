@@ -43,8 +43,8 @@
       <h1 class="hero__title">Domina<br/>cada paso.</h1>
       <p class="hero__sub">Zapatos, bolsos y accesorios de lujo accesible. Estilo sin compromisos.</p>
       <div class="hero__cta">
-        <a href="#dynamicSections" class="btn btn--primary">Comprar Ahora</a>
-        <a href="#coleccion" class="btn btn--outline">Ver Colección</a>
+        <a href="#catalogo" class="btn btn--primary">Comprar Ahora</a>
+        <a href="#ofertas" class="btn btn--outline">Ver Ofertas</a>
       </div>
     </div>
     <div class="hero__visual">
@@ -56,26 +56,53 @@
     </div>
   </section>
 
-  <!-- CATEGORÍAS -->
-  <section class="categories" id="coleccion">
+  <!-- CARRUSEL DE OFERTAS -->
+  <section class="offers" id="ofertas">
     <div class="container">
-      <div class="categories__grid" id="catGrid"></div>
+      <div class="offers__head">
+        <span class="promo-tag">Oferta Flash</span>
+        <h2>Hasta 40% OFF en seleccionados</h2>
+      </div>
+      <div class="offers__carousel" id="offersCarousel">
+        <button class="offers__arrow offers__arrow--prev" id="offersPrev" aria-label="Anterior">‹</button>
+        <div class="offers__viewport">
+          <div class="offers__track" id="offersTrack"></div>
+        </div>
+        <button class="offers__arrow offers__arrow--next" id="offersNext" aria-label="Siguiente">›</button>
+      </div>
+      <div class="offers__dots" id="offersDots"></div>
     </div>
   </section>
 
-  <!-- BANNER OFERTA -->
-  <section class="promo-banner" id="ofertas">
+  <!-- CATÁLOGO -->
+  <section class="catalog" id="catalogo">
     <div class="container">
-      <div class="promo-banner__inner">
-        <span class="promo-tag">Oferta Flash</span>
-        <h2>Hasta 40% OFF<br/>en seleccionados</h2>
-        <a href="#dynamicSections" class="btn btn--white">Aprovechar ahora</a>
+      <div class="catalog__tabs" id="catalogTabs"></div>
+      <div class="catalog__layout">
+        <aside class="catalog__filters" id="catalogFilters"></aside>
+        <div class="catalog__main">
+          <div class="catalog__toolbar">
+            <button class="catalog__filter-toggle" id="filterToggle">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="4" y1="21" x2="4" y2="14"/><line x1="4" y1="10" x2="4" y2="3"/><line x1="12" y1="21" x2="12" y2="12"/><line x1="12" y1="8" x2="12" y2="3"/><line x1="20" y1="21" x2="20" y2="16"/><line x1="20" y1="12" x2="20" y2="3"/><line x1="1" y1="14" x2="7" y2="14"/><line x1="9" y1="8" x2="15" y2="8"/><line x1="17" y1="16" x2="23" y2="16"/></svg>
+              Filtros
+            </button>
+            <span class="catalog__count" id="catalogCount"></span>
+            <select id="sortSelect" class="catalog__sort">
+              <option value="relevance">Más relevantes</option>
+              <option value="price-asc">Menor precio</option>
+              <option value="price-desc">Mayor precio</option>
+              <option value="rating">Mejor evaluados</option>
+            </select>
+          </div>
+          <div class="products-grid" id="catalogGrid"></div>
+          <div class="pagination" id="catalogPagination"></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- SECCIONES DINÁMICAS DE PRODUCTOS -->
-  <div id="dynamicSections"></div>
+  <!-- OVERLAY FILTROS MÓVIL -->
+  <div class="filters-overlay" id="filtersOverlay" style="display:none"></div>
 
   <!-- TRUST BADGES -->
   <section class="trust">
@@ -149,6 +176,13 @@
     <div class="cart-drawer__header">
       <h3>Mi Carrito</h3>
       <button class="cart-drawer__close" id="cartClose">✕</button>
+    </div>
+    <div class="cart-drawer__selectall" id="cartSelectAllRow" style="display:none">
+      <label class="cart-selectall-label">
+        <input type="checkbox" id="cartSelectAll" checked />
+        <span>Seleccionar todo</span>
+      </label>
+      <span class="cart-selectall-count" id="cartSelectedCount"></span>
     </div>
     <div class="cart-drawer__items" id="cartItems">
       <div class="cart-empty" id="cartEmpty">
