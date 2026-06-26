@@ -1,7 +1,11 @@
-import { db } from './firebase-config.js';
+import { db, auth, googleProvider } from './firebase-config.js';
 import {
-  collection, getDocs, getDoc, doc, addDoc, query, where, updateDoc, increment
+  collection, getDocs, getDoc, doc, setDoc, addDoc, query, where, updateDoc, increment
 } from "https://www.gstatic.com/firebasejs/12.15.0/firebase-firestore.js";
+import {
+  onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword,
+  signInWithPopup, signOut, updateProfile
+} from "https://www.gstatic.com/firebasejs/12.15.0/firebase-auth.js";
 
 /* ===== PRODUCTOS POR DEFECTO ===== */
 const DEFAULT_PRODUCTS = [
@@ -60,6 +64,7 @@ function applyStoreInfo() {
   const set = (id, val) => { const el = document.getElementById(id); if (el && val) el.textContent = val; };
   set('navLogo', name);
   set('footerLogo', name);
+  set('authBrand', name);
   set('footerDesc', si.description || si.slogan || '');
   set('footerCopyright', `© ${year} ${name}. Todos los derechos reservados.`);
 
@@ -710,6 +715,11 @@ document.getElementById('sgOverlay').addEventListener('click', e => {
 
 /* ===== CARRITO LÓGICA ===== */
 function addToCart(product, size) {
+  if (!currentUser) {
+    pendingCartAdd = { product, size };
+    openAuthModal('signup');
+    return;
+  }
   const key = `${product.id}-${size}`;
   const existing = cart.find(i => i.key === key);
   if (existing) { existing.qty++; }
@@ -920,6 +930,157 @@ window.scrollTo = function(target) {
     _nativeScrollTo(target);
   }
 };
+
+/* ===================================================================
+   AUTENTICACIÓN
+   =================================================================== */
+let currentUser = null;
+let pendingCartAdd = null;
+let authMode = 'signup'; // 'signup' | 'login'
+
+function openAuthModal(mode = 'signup') {
+  setAuthMode(mode);
+  document.getElementById('authError').style.display = 'none';
+  document.getElementById('authOverlay').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+function closeAuthModal() {
+  document.getElementById('authOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  pendingCartAdd = null;
+}
+function setAuthMode(mode) {
+  authMode = mode;
+  const isSignup = mode === 'signup';
+  document.getElementById('authTitle').textContent = isSignup ? 'Crea tu cuenta' : 'Inicia sesión';
+  document.getElementById('authSub').textContent = isSignup
+    ? 'Crea una cuenta para agregar productos al carrito.'
+    : 'Ingresa para continuar con tu compra.';
+  document.getElementById('authNameField').style.display = isSignup ? 'block' : 'none';
+  document.getElementById('authName').required = isSignup;
+  document.getElementById('authSubmitBtn').textContent = isSignup ? 'Crear cuenta' : 'Ingresar';
+  document.getElementById('authPassword').autocomplete = isSignup ? 'new-password' : 'current-password';
+  document.getElementById('authToggleText').textContent = isSignup ? '¿Ya tienes cuenta?' : '¿No tienes cuenta?';
+  document.getElementById('authToggleBtn').textContent = isSignup ? 'Inicia sesión' : 'Regístrate';
+  document.getElementById('authError').style.display = 'none';
+}
+function authErrorMessage(code) {
+  const map = {
+    'auth/email-already-in-use': 'Este correo ya está registrado. Inicia sesión.',
+    'auth/invalid-email': 'El correo no es válido.',
+    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres.',
+    'auth/invalid-credential': 'Correo o contraseña incorrectos.',
+    'auth/wrong-password': 'Correo o contraseña incorrectos.',
+    'auth/user-not-found': 'No existe una cuenta con este correo.',
+    'auth/popup-closed-by-user': 'Cerraste la ventana de Google antes de terminar.',
+    'auth/too-many-requests': 'Demasiados intentos. Inténtalo más tarde.',
+  };
+  return map[code] || 'Ocurrió un error. Inténtalo de nuevo.';
+}
+function showAuthError(msg) {
+  const el = document.getElementById('authError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+async function saveUserDoc(user, extraName) {
+  try {
+    await setDoc(doc(db, 'users', user.uid), {
+      name: extraName || user.displayName || '',
+      email: user.email || '',
+      createdAt: Date.now(),
+    }, { merge: true });
+  } catch(e) { /* no bloquea el flujo */ }
+}
+
+document.getElementById('authForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const btn = document.getElementById('authSubmitBtn');
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const name = document.getElementById('authName').value.trim();
+  btn.disabled = true;
+  try {
+    if (authMode === 'signup') {
+      const cred = await createUserWithEmailAndPassword(auth, email, password);
+      if (name) await updateProfile(cred.user, { displayName: name });
+      await saveUserDoc(cred.user, name);
+    } else {
+      await signInWithEmailAndPassword(auth, email, password);
+    }
+    // onAuthStateChanged se encarga del resto
+  } catch(err) {
+    showAuthError(authErrorMessage(err.code));
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+document.getElementById('authGoogleBtn').addEventListener('click', async () => {
+  try {
+    const cred = await signInWithPopup(auth, googleProvider);
+    await saveUserDoc(cred.user);
+  } catch(err) {
+    showAuthError(authErrorMessage(err.code));
+  }
+});
+
+document.getElementById('authToggleBtn').addEventListener('click', () => {
+  setAuthMode(authMode === 'signup' ? 'login' : 'signup');
+});
+document.getElementById('authClose').addEventListener('click', closeAuthModal);
+document.getElementById('authOverlay').addEventListener('click', e => {
+  if (e.target === e.currentTarget) closeAuthModal();
+});
+
+/* ===== ESTADO DE LA CUENTA EN EL NAV ===== */
+function renderAccountUI() {
+  const nameEl = document.getElementById('accountName');
+  const menuEmail = document.getElementById('accountMenuEmail');
+  if (currentUser) {
+    const display = currentUser.displayName || (currentUser.email || '').split('@')[0];
+    nameEl.textContent = display;
+    menuEmail.textContent = currentUser.email || '';
+  } else {
+    nameEl.textContent = '';
+    document.getElementById('accountMenu').style.display = 'none';
+  }
+}
+
+document.getElementById('accountBtn').addEventListener('click', () => {
+  if (currentUser) {
+    const menu = document.getElementById('accountMenu');
+    menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+  } else {
+    openAuthModal('login');
+  }
+});
+document.getElementById('accountLogoutBtn').addEventListener('click', async () => {
+  await signOut(auth);
+  document.getElementById('accountMenu').style.display = 'none';
+  showToast('Sesión cerrada');
+});
+document.addEventListener('click', e => {
+  const menu = document.getElementById('accountMenu');
+  const btn = document.getElementById('accountBtn');
+  if (menu.style.display === 'block' && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+
+onAuthStateChanged(auth, user => {
+  currentUser = user;
+  renderAccountUI();
+  if (user) {
+    closeAuthModal();
+    if (pendingCartAdd) {
+      const { product, size } = pendingCartAdd;
+      pendingCartAdd = null;
+      addToCart(product, size);
+      openCart();
+    }
+  }
+});
 
 /* ===== INIT ===== */
 async function init() {
