@@ -318,11 +318,16 @@
         </div>
         <div class="pdp-review-form">
           <h4>Escribe una Reseña</h4>
-          <form id="reviewForm">
+          <div class="review-gate" id="reviewGate" style="display:none"></div>
+          <form id="reviewForm" style="display:none">
             <div class="review-form-row">
               <div class="form-group">
-                <label>Tu Nombre</label>
-                <input type="text" id="reviewName" placeholder="Juan Pérez" required />
+                <label>Identidad</label>
+                <label class="review-anon-toggle">
+                  <input type="checkbox" id="reviewAnon" />
+                  <span>Publicar de forma anónima</span>
+                </label>
+                <span class="review-as-name" id="reviewAsName"></span>
               </div>
               <div class="form-group">
                 <label>Calificación</label>

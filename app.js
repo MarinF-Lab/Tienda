@@ -413,6 +413,7 @@ function openPDP(productId) {
   /* Reviews */
   loadAndRenderReviews(productId);
   resetReviewForm();
+  updateReviewEligibility(productId);
 
   overlay.classList.add('open');
   overlay.setAttribute('aria-hidden', 'false');
@@ -499,7 +500,7 @@ async function loadAndRenderReviews(productId) {
       const date = r.createdAt ? new Date(r.createdAt).toLocaleDateString('es-CL') : '';
       el.innerHTML = `
         <div class="review-card__header">
-          <span class="review-card__author">${r.author}</span>
+          <span class="review-card__author">${r.author}${r.verifiedPurchase ? '<span class="review-verified">✓ Compra verificada</span>' : ''}</span>
           <span class="review-card__date">${date}</span>
         </div>
         <div class="review-card__stars">${[1,2,3,4,5].map(i => `<span class="star${i<=(r.rating||0)?' filled':''}">★</span>`).join('')}</div>
@@ -518,6 +519,35 @@ function resetReviewForm() {
   document.querySelectorAll('.star-pick').forEach(s => s.classList.remove('active'));
 }
 
+function updateReviewEligibility(productId) {
+  const form = document.getElementById('reviewForm');
+  const gate = document.getElementById('reviewGate');
+  const asName = document.getElementById('reviewAsName');
+
+  if (!currentUser) {
+    form.style.display = 'none';
+    gate.style.display = 'block';
+    gate.innerHTML = `Para opinar debes <button type="button" class="review-gate__link" id="reviewGateLogin">iniciar sesión</button> y haber comprado este producto.`;
+    document.getElementById('reviewGateLogin')?.addEventListener('click', () => openAuthModal('login'));
+    return;
+  }
+  if (!hasPurchased(productId)) {
+    form.style.display = 'none';
+    gate.style.display = 'block';
+    gate.innerHTML = `🔒 Solo quienes han comprado este producto pueden dejar una reseña.`;
+    return;
+  }
+  gate.style.display = 'none';
+  form.style.display = 'block';
+  const name = currentUser.displayName || (currentUser.email || '').split('@')[0];
+  const anon = document.getElementById('reviewAnon').checked;
+  asName.textContent = anon ? 'Se publicará como "Anónimo"' : `Se publicará como "${name}"`;
+}
+
+document.getElementById('reviewAnon')?.addEventListener('change', () => {
+  if (currentPDPProduct) updateReviewEligibility(currentPDPProduct.id);
+});
+
 /* Star picker */
 document.querySelectorAll('.star-pick').forEach(star => {
   star.addEventListener('click', () => {
@@ -531,14 +561,24 @@ document.querySelectorAll('.star-pick').forEach(star => {
 document.getElementById('reviewForm').addEventListener('submit', async e => {
   e.preventDefault();
   if (!currentPDPProduct) return;
+  if (!currentUser) { openAuthModal('login'); return; }
+  if (!hasPurchased(currentPDPProduct.id)) {
+    showToast('Solo quienes compraron este producto pueden opinar');
+    return;
+  }
   if (!selectedReviewRating) { showToast('Selecciona una calificación'); return; }
-  const author = document.getElementById('reviewName').value.trim();
   const comment = document.getElementById('reviewComment').value.trim();
+  const anon = document.getElementById('reviewAnon').checked;
+  const realName = currentUser.displayName || (currentUser.email || '').split('@')[0];
+  const author = anon ? 'Anónimo' : realName;
 
   try {
     await addDoc(collection(db, 'reviews'), {
       productId: currentPDPProduct.id,
       author,
+      anonymous: anon,
+      userId: currentUser.uid,
+      verifiedPurchase: true,
       rating: selectedReviewRating,
       comment,
       createdAt: Date.now(),
@@ -546,6 +586,7 @@ document.getElementById('reviewForm').addEventListener('submit', async e => {
     showToast('¡Reseña publicada!');
     loadAndRenderReviews(currentPDPProduct.id);
     resetReviewForm();
+    updateReviewEligibility(currentPDPProduct.id);
   } catch(e) {
     showToast('Error al publicar la reseña');
   }
@@ -872,6 +913,7 @@ document.getElementById('checkoutForm2').addEventListener('submit', e => {
   saveCart();
   updateCartUI();
   deductStock(purchasedItems);
+  recordPurchase(purchasedItems);
 });
 document.getElementById('continueShopping').addEventListener('click', () => {
   closeCheckout();
@@ -937,6 +979,37 @@ window.scrollTo = function(target) {
 let currentUser = null;
 let pendingCartAdd = null;
 let authMode = 'signup'; // 'signup' | 'login'
+let purchasedProductIds = new Set();
+
+async function loadUserPurchases() {
+  purchasedProductIds = new Set();
+  if (!currentUser) return;
+  try {
+    const snap = await getDocs(collection(db, 'users', currentUser.uid, 'purchases'));
+    snap.forEach(d => purchasedProductIds.add(d.id));
+  } catch(e) { console.warn('No se pudieron cargar las compras del usuario', e); }
+}
+
+async function recordPurchase(cartItems) {
+  if (!currentUser) return;
+  for (const item of cartItems) {
+    try {
+      await setDoc(doc(db, 'users', currentUser.uid, 'purchases', item.id), {
+        productId: item.id,
+        name: item.name,
+        size: item.size,
+        purchased: true,
+        lastPurchasedAt: Date.now(),
+        qty: increment(item.qty),
+      }, { merge: true });
+      purchasedProductIds.add(item.id);
+    } catch(e) { console.warn('No se pudo registrar la compra de', item.id, e); }
+  }
+}
+
+function hasPurchased(productId) {
+  return purchasedProductIds.has(productId);
+}
 
 function openAuthModal(mode = 'signup') {
   setAuthMode(mode);
@@ -1068,9 +1141,11 @@ document.addEventListener('click', e => {
   }
 });
 
-onAuthStateChanged(auth, user => {
+onAuthStateChanged(auth, async user => {
   currentUser = user;
   renderAccountUI();
+  await loadUserPurchases();
+  if (currentPDPProduct) updateReviewEligibility(currentPDPProduct.id);
   if (user) {
     closeAuthModal();
     if (pendingCartAdd) {
