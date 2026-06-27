@@ -247,7 +247,7 @@ function renderCard(p) {
    CATÁLOGO: PESTAÑAS + FILTROS + PAGINACIÓN
    =================================================================== */
 const cap = s => s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-const PER_PAGE = 10;
+const PER_PAGE = 12;
 let catalogProducts = [];
 let catalogCategories = [];
 let catalogState = {
